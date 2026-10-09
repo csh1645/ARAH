@@ -3,7 +3,7 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.drawHero
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.drawHero, A.findFamily
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -31,6 +31,8 @@
  * @property {number} heartsLeft 남은 하트
  * @property {boolean} perfect   10문제를 모두 한 번에 맞혔는지
  * @property {Question[]} mistakes 틀리거나 놓친 문제 (복습용)
+ * @property {number} reviewAdded    이번 판에 복습 노트에 새로 들어간 문제 수
+ * @property {number} reviewMastered 이번 판에 복습 노트에서 졸업한 문제 수
  */
 (function (A) {
   'use strict';
@@ -96,6 +98,12 @@
       this.q = null;
       this.waveActive = false;
       this.ended = false;
+      this.reviewStats = { added: 0, mastered: 0 };
+      // 오답 복습은 복습 노트에 있는 문제 수만큼만 낸다 (최대 한 판 문제 수)
+      this.reviewKind = this.questionOptions().spelling ? 'spell' : 'choice';
+      this.totalQuestions = this.opts.subject === 'review'
+        ? Math.max(1, Math.min(A.RULES.questionsPerRound, A.Review.count(this.reviewKind)))
+        : A.RULES.questionsPerRound;
 
       this.createFxTextures();
       this.burster = this.add.particles(0, 0, 'fx-spark', {
@@ -117,6 +125,11 @@
     // ---------- 하위 클래스 훅 (기본 구현) ----------
 
     introText() { return `${this.hero.name} 출동!`; }
+    /** 판이 끝났을 때 크게 보여 줄 문구 (보스 배틀처럼 승패가 다른 모드가 바꾼다) */
+    finishMessage(perfect) {
+      if (this.hearts <= 0) return '조금만 더 힘내요!';
+      return perfect ? '퍼펙트 미션!' : '미션 완료!';
+    }
     /** 이 모드가 원하는 문제 형식 (예: 그림 보기). @returns {QuestionOptions} */
     questionOptions() { return {}; }
     createWorld() {}
@@ -128,17 +141,12 @@
     /** 다음 문제를 고르고 하위 클래스에 배치를 맡긴다. 끝날 조건이면 finish 로 간다. */
     nextQuestion() {
       if (this.ended) return;
-      if (this.hearts <= 0 || this.qIndex >= A.RULES.questionsPerRound) {
+      if (this.hearts <= 0 || this.qIndex >= this.totalQuestions) {
         this.finish();
         return;
       }
 
-      // 최근에 나온 문제는 피해서 다시 뽑는다 (범위가 좁은 1단계에서 같은 문제 반복 방지)
-      let q;
-      for (let i = 0; i < 8; i++) {
-        q = A.makeQuestion(this.opts.subject, this.opts.level, this.questionOptions());
-        if (!this.recent.includes(q.key)) break;
-      }
+      const q = this.pickQuestion();
       this.recent.push(q.key);
       if (this.recent.length > RECENT_LIMIT) this.recent.shift();
       q.missed = false;
@@ -153,6 +161,32 @@
 
       this.waveActive = true;
       this.startWave(q);
+      if (q.speakOnStart && q.speak) A.speak(q.speak); // 듣기 문제
+    }
+
+    /**
+     * 이번 문제를 고른다.
+     * - 과목이 '오답 복습'이면 복습 노트에서 꺼낸다 (비었으면 섞어서 문제로 대신)
+     * - 일반 과목이면 RULES.reviewMixRate 확률로 같은 과목의 복습 문제를 섞는다
+     * - 최근에 나온 문제는 피해서 다시 뽑는다 (범위가 좁은 1단계에서 같은 문제 반복 방지)
+     * @returns {Question}
+     */
+    pickQuestion() {
+      const opts = this.questionOptions();
+      const subject = this.opts.subject;
+      // 철자 잇기처럼 영어 전용 형식이면 과목과 상관없이 영어 복습 문제를 쓴다
+      const reviewSubject = opts.spelling ? 'review' : subject;
+      if (subject === 'review' || Math.random() < A.RULES.reviewMixRate) {
+        const rq = A.Review.pick(this.reviewKind, reviewSubject, this.recent);
+        if (rq) return rq;
+      }
+      const real = subject === 'review' ? 'mix' : subject;
+      let q;
+      for (let i = 0; i < 8; i++) {
+        q = A.makeQuestion(real, this.opts.level, opts);
+        if (!this.recent.includes(q.key)) break;
+      }
+      return q;
     }
 
     /**
@@ -160,12 +194,13 @@
      * (x, y) 를 주면 그 자리에서 축하 연출(파티클 · 줌 펄스 · 콤보 배너)을 한다.
      * @param {number} [x]
      * @param {number} [y]
+     * @param {Question} [q] 맞힌 문제 (기본: 현재 문제. 한 화면에 여러 문제를 내는 모드가 지정)
      * @returns {number} 이번에 얻은 점수
      */
-    awardCorrect(x, y) {
+    awardCorrect(x, y, q = this.q) {
       this.combo++;
       this.bestCombo = Math.max(this.bestCombo, this.combo);
-      if (!this.q.missed) this.firstTry++;
+      if (!q.missed) this.firstTry++;
       const pts = BASE_POINTS + Math.round((this.combo - 1) * COMBO_STEP * (this.ab.comboBonus || 1));
       this.score += pts;
       this.updateHud();
@@ -176,13 +211,14 @@
     /**
      * 오답 · 놓침 처리: 하트 -1, 콤보 초기화, 복습 목록에 추가, 화면 흔들림 · 빨간 번쩍임.
      * @param {boolean} [loseHeart=true] false 이면 하트는 그대로 두고 나머지만 처리 (철자 잇기처럼 실수가 잦은 모드)
+     * @param {Question} [q] 틀린 문제 (기본: 현재 문제)
      */
-    penalize(loseHeart = true) {
+    penalize(loseHeart = true, q = this.q) {
       this.combo = 0;
       if (loseHeart) this.hearts = Math.max(0, this.hearts - 1);
-      if (!this.q.missed) {
-        this.q.missed = true;
-        this.mistakes.push(this.q);
+      if (!q.missed) {
+        q.missed = true;
+        this.mistakes.push(q);
       }
       this.cameras.main.shake(160, 0.006);
       this.updateHud();
@@ -265,16 +301,30 @@
     endWave(delay) {
       if (!this.waveActive) return;
       this.waveActive = false;
+      // 문제 결과를 복습 노트에 반영 (틀린 문제 추가 / 복습 문제를 맞히면 상자 올림 · 졸업)
+      this.recordReview(this.q);
       this.clearWave();
       this.time.delayedCall(delay, () => this.nextQuestion());
+    }
+
+    /**
+     * 끝난 문제 하나를 복습 노트에 반영하고 결과 화면 집계를 올린다.
+     * endWave 가 this.q 에 대해 부르며, 한 화면에 여러 문제를 내는 모드(짝꿍 찾기)는 나머지 문제에 직접 부른다.
+     * @param {Question} q
+     */
+    recordReview(q) {
+      const r = A.Review.record(q);
+      if (r === 'added') this.reviewStats.added++;
+      if (r === 'mastered') this.reviewStats.mastered++;
     }
 
     finish() {
       if (this.ended) return;
       this.ended = true;
       const total = this.qIndex;
-      const perfect = total === A.RULES.questionsPerRound && this.firstTry === total;
-      const msg = this.hearts <= 0 ? '조금만 더 힘내요!' : perfect ? '퍼펙트 미션!' : '미션 완료!';
+      // 복습 판은 문제 수가 적을 수 있다 → 그 판의 문제 수 기준. 단 3문제 미만은 퍼펙트 보너스 없음
+      const perfect = total === this.totalQuestions && total >= 3 && this.firstTry === total;
+      const msg = this.finishMessage(perfect);
       this.qText.setText('');
       this.hintText.setText('');
       const t = this.add
@@ -292,6 +342,8 @@
           heartsLeft: this.hearts,
           perfect,
           mistakes: this.mistakes,
+          reviewAdded: this.reviewStats.added,
+          reviewMastered: this.reviewStats.mastered,
         }));
     }
 
@@ -391,7 +443,8 @@
     /** 줄(거미줄 · 레이저 줄 등)이 나가는 손 위치. 히어로가 왼쪽을 보면 좌우가 바뀐다. */
     hand() {
       const dir = this.player.flipX ? -1 : 1;
-      return { x: this.player.x + dir * GAME.HAND_OFFSET.x, y: this.player.y + GAME.HAND_OFFSET.y };
+      const k = Math.abs(this.player.scaleY) || 1; // 히어로를 크게 · 작게 그린 모드도 손 위치가 맞게
+      return { x: this.player.x + dir * GAME.HAND_OFFSET.x * k, y: this.player.y + GAME.HAND_OFFSET.y * k };
     }
 
     createHud() {
@@ -400,6 +453,10 @@
       });
       this.add.rectangle(W / 2, GAME.HUD_H / 2, W, GAME.HUD_H, 0x000000, 0.45).setDepth(DEPTH.hud);
       this.qText = this.add.text(W / 2, 40, '', style(46, '#ffffff')).setOrigin(0.5).setDepth(DEPTH.hud);
+      // 문제를 누르면 영어 발음을 다시 들려준다 (듣기 문제 · 영어 문제 공통)
+      this.qText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+        if (this.q && this.q.speak) A.speak(this.q.speak);
+      });
       this.hintText = this.add.text(W / 2, 80, '', style(18, '#ffd166')).setOrigin(0.5).setDepth(DEPTH.hud);
       this.heartText = this.add.text(18, 12, '', style(26, '#ffffff')).setDepth(DEPTH.hud);
       this.progressText = this.add.text(18, 56, '', style(20, '#cccccc')).setDepth(DEPTH.hud);
@@ -410,7 +467,7 @@
 
     updateHud() {
       this.heartText.setText('❤️'.repeat(this.hearts) + '🖤'.repeat(this.maxHearts - this.hearts));
-      this.progressText.setText(`문제 ${this.qIndex} / ${A.RULES.questionsPerRound}`);
+      this.progressText.setText(`${this.opts.subject === 'review' ? '📒 복습 ' : '문제 '}${this.qIndex} / ${this.totalQuestions}`);
       this.scoreText.setText(`점수 ${this.score}`);
       this.comboText.setText(this.combo >= 2 ? `🔥 ${this.combo} 콤보` : '');
     }

@@ -56,17 +56,43 @@
       super({ key: 'play' });
     }
 
+    /**
+     * 3D 로 보여 줄 수 있는지. Three.js 를 불러왔고 기기가 WebGL 을 지원하면 3D, 아니면 2D.
+     * (예전에는 '문 통과'와 '3D 문 통과'가 따로 있었지만 규칙이 같아 하나로 합쳤다 — 사용자 요청 2026-10-10)
+     */
+    static use3D() {
+      if (GateScene._use3D !== undefined) return GateScene._use3D;
+      let ok = typeof THREE !== 'undefined' && !!A.GateView3D;
+      if (ok) {
+        try {
+          const cv = document.createElement('canvas');
+          ok = !!(cv.getContext('webgl2') || cv.getContext('webgl'));
+        } catch (e) {
+          ok = false;
+        }
+      }
+      GateScene._use3D = ok;
+      return ok;
+    }
+
+    /** 3D 뷰일 때는 Phaser 캔버스를 투명하게 해서 뒤의 3D 화면 위에 HUD 만 겹친다 (launcher.js 가 읽는다) */
+    static get transparent() {
+      return GateScene.use3D();
+    }
+
     introText() {
-      return `${this.hero.name} 출동!\n정답 문이 있는 줄로 달려가요`;
+      return GateScene.use3D()
+        ? `${this.hero.name} 출동!\n하늘 다리를 달려 정답 문으로!`
+        : `${this.hero.name} 출동!\n정답 문이 있는 줄로 달려가요`;
     }
 
     questionOptions() {
       return { pictureChoices: true };
     }
 
-    /** 화면 뷰를 만든다. 3D 모드는 이 함수만 바꿔서 같은 규칙을 3D 로 보여 준다. @returns {GateView} */
+    /** 화면 뷰를 만든다: 가능하면 Three.js 3D, 아니면 Phaser 2D. 규칙은 같다. @returns {GateView} */
     createView(laneCount) {
-      return new A.GateView2D(this, laneCount);
+      return GateScene.use3D() ? new A.GateView3D(this, laneCount) : new A.GateView2D(this, laneCount);
     }
 
     createWorld() {

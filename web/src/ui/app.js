@@ -1,5 +1,6 @@
 /**
- * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(별, 마지막 선택) 관리.
+ * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(팀 스타 · 히어로 합류 · 마지막 선택) 관리.
+ *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review
  * @layer ui
  * @depends A.storage, A.speak, A.MODES, A.SUBJECTS, A.LEVELS, A.RULES, A.HEROES, A.findHero, A.drawHero,
  *          A.GAME_MODES, A.startGame
@@ -21,9 +22,41 @@
     subject: store.get('subject', 'add'),
     level: store.get('level', 1),
   };
+  // 저장값 검증: 목록에 없는 값(예전 버전 · 손상된 값)은 기본값으로 (보기 수 계산 오류 방지)
+  if (!A.LEVELS.some((l) => l.id === state.level)) state.level = 1;
+  state.mode = (A.MODE_ALIASES && A.MODE_ALIASES[state.mode]) || state.mode; // 예: 3D 문 통과 → 문 통과
+  if (!A.SUBJECTS.some((s) => s.id === state.subject)) state.subject = 'add';
+  if (typeof state.stars !== 'number' || !(state.stars >= 0)) state.stars = 0;
   let game = null;
 
-  const isUnlocked = (hero) => state.stars >= hero.unlockStars;
+  // ---------- 팀 스타 · 히어로 합류 ----------
+  // stars: 지금까지 받은 스타 합계 (기록용) / teamStars: 팀별 스타 (합류 조건) / unlocked: 예전 규칙으로 이미 열린 히어로
+
+  /**
+   * 예전(전체 별 하나로 합류하던 시절, 2026-10-10 배포본)의 합류 조건.
+   * 팀 스타로 바뀌면서 이미 열렸던 히어로가 다시 잠기지 않도록 한 번만 옮겨 담는 데 쓴다.
+   */
+  const LEGACY_UNLOCKS = {
+    red: 0, snow: 10, shadow: 25, detective: 45, piggy: 70, future: 100,
+    'armor-red': 15, 'armor-war': 55, 'armor-blue': 130, 'shield-star': 20, 'shield-night': 80, 'shield-crystal': 160,
+    'thunder-knight': 30, 'thunder-storm': 90, 'thunder-aurora': 190, 'giant-green': 35, 'giant-red': 110, 'giant-gray': 220,
+    'archer-purple': 40, 'archer-shadow': 120, 'archer-gold': 260, 'mystic-master': 140, 'mystic-dark': 240,
+    'panther-night': 150, 'panther-gold': 280,
+  };
+
+  state.teamStars = store.get('teamStars', null);
+  state.unlocked = store.get('unlocked', []);
+  if (!state.teamStars || typeof state.teamStars !== 'object') {
+    // 처음 한 번: 예전 별은 모두 거미 팀으로 플레이해서 모은 것이므로 거미 스타로 옮기고, 이미 열린 히어로는 기억해 둔다
+    state.teamStars = { spider: state.stars };
+    state.unlocked = Object.keys(LEGACY_UNLOCKS).filter((id) => state.stars >= LEGACY_UNLOCKS[id]);
+    store.set('teamStars', state.teamStars);
+    store.set('unlocked', state.unlocked);
+  }
+  if (!Array.isArray(state.unlocked)) state.unlocked = [];
+
+  const teamStarsOf = (familyId) => Math.max(0, Number(state.teamStars[familyId]) || 0);
+  const isUnlocked = (hero) => teamStarsOf(hero.family) >= hero.unlockStars || state.unlocked.includes(hero.id);
 
   // ---------- 모바일 대응 ----------
   // 게임 화면은 가로형(960 x 640)이라 폰을 세로로 들면 너무 작아진다.
@@ -94,15 +127,30 @@
     return b;
   }
 
+  /** 이름 뒤 조사 '이/가': 마지막 글자에 받침이 있으면 '이' (예: 썬더 퀸이, 레드 아머가) */
+  function josaIGa(word) {
+    const code = word.charCodeAt(word.length - 1) - 0xac00;
+    return code >= 0 && code <= 11171 && code % 28 !== 0 ? '이' : '가';
+  }
+
+  /** 팀에서 아직 합류하지 않은 히어로 중 가장 먼저 열릴 히어로 (없으면 null) */
+  function nextHeroOf(family) {
+    return A.HEROES.filter((h) => h.family === family.id && !isUnlocked(h)).sort((a, b) => a.unlockStars - b.unlockStars)[0] || null;
+  }
+
   function renderMenu() {
     if (!isUnlocked(A.findHero(state.heroId))) state.heroId = 'red';
     $('#starCount').textContent = state.stars;
 
     // 히어로 도감: 팀별로 묶고, 팀 안에서는 합류 조건 순서로 보여 준다
     const owned = A.HEROES.filter(isUnlocked).length;
-    const next = A.HEROES.filter((h) => !isUnlocked(h)).sort((a, b) => a.unlockStars - b.unlockStars)[0];
     $('#heroCount').textContent = `${owned} / ${A.HEROES.length}`;
-    $('#nextHero').textContent = next ? `다음 합류: ${next.name} (⭐ ${next.unlockStars - state.stars}개 더)` : '모든 히어로를 모았어요! 🎉';
+    // 지금 고른 히어로의 팀에서 다음에 합류할 히어로 (이 팀으로 플레이하면 이 팀 스타가 쌓인다)
+    const curFamily = A.findFamily(A.findHero(state.heroId));
+    const nextInTeam = nextHeroOf(curFamily);
+    $('#nextHero').textContent = nextInTeam
+      ? `${curFamily.star} ${curFamily.starName} ${teamStarsOf(curFamily.id)}개 · 다음 합류: ${nextInTeam.name}까지 ${nextInTeam.unlockStars - teamStarsOf(curFamily.id)}개 더`
+      : `${curFamily.star} ${curFamily.name} 히어로를 모두 모았어요! 🎉 다른 팀으로도 플레이해 봐요`;
 
     const heroes = $('#heroes');
     heroes.replaceChildren();
@@ -111,8 +159,9 @@
       if (!members.length) continue;
       const head = document.createElement('div');
       head.className = 'family-head';
-      head.innerHTML = '<strong></strong><span class="family-trait"></span><span class="family-count"></span>';
+      head.innerHTML = '<strong></strong><span class="family-star"></span><span class="family-trait"></span><span class="family-count"></span>';
       head.querySelector('strong').textContent = family.name;
+      head.querySelector('.family-star').textContent = `${family.star} ${teamStarsOf(family.id)}`;
       head.querySelector('.family-trait').textContent = `${family.trait} · ${family.shot}`;
       head.querySelector('.family-count').textContent = `${members.filter(isUnlocked).length} / ${members.length}`;
       const grid = document.createElement('div');
@@ -138,7 +187,10 @@
     info.innerHTML = '<strong></strong><span class="hero-universe"></span><span class="hero-ability"></span>';
     info.querySelector('strong').textContent = hero.name;
     info.querySelector('.hero-universe').textContent = hero.universe;
-    info.querySelector('.hero-ability').textContent = unlocked ? hero.abilityText : `🔒 ⭐ ${hero.unlockStars}개 모으면 합류`;
+    const fam = A.findFamily(hero);
+    info.querySelector('.hero-ability').textContent = unlocked
+      ? hero.abilityText
+      : `🔒 ${fam.star} ${fam.starName} ${hero.unlockStars}개 모으면 합류 (지금 ${teamStarsOf(fam.id)}개)`;
     card.appendChild(info);
     card.addEventListener('click', () => {
       state.heroId = hero.id;
@@ -162,19 +214,28 @@
         })),
     );
 
+    // 오답 복습: 지금 고른 놀이에서 쓸 수 있는 복습 문제 수를 보여 주고, 없으면 고를 수 없게 한다
+    const reviewKind = state.mode === 'spell' ? 'spell' : 'choice';
+    const reviewCount = A.Review.count(reviewKind);
+    if (state.subject === 'review' && reviewCount === 0) state.subject = 'add';
     const subjects = $('#subjects');
     subjects.replaceChildren(
-      ...A.SUBJECTS.map((s) =>
-        optionButton(`${s.icon} ${s.label}`, '', s.id === state.subject, () => {
-          state.subject = s.id;
-          renderMenu();
-        })),
+      ...A.SUBJECTS.map((s) => {
+        const isReview = s.id === 'review';
+        const b = optionButton(`${s.icon} ${s.label}`, isReview ? (reviewCount ? `${reviewCount}문제` : '아직 없어요') : '',
+          s.id === state.subject, () => {
+            state.subject = s.id;
+            renderMenu();
+          });
+        if (isReview && reviewCount === 0) b.disabled = true;
+        return b;
+      }),
     );
 
     const levels = $('#levels');
     levels.replaceChildren(
       ...A.LEVELS.map((l) =>
-        optionButton(l.label, l.grade, l.id === state.level, () => {
+        optionButton(l.label, l.desc, l.id === state.level, () => {
           state.level = l.id;
           renderMenu();
         })),
@@ -224,17 +285,22 @@
   }
 
   /**
-   * 결과 화면을 보여 주고 별을 적립한다. A.startGame 의 onEnd 콜백으로 불린다.
-   * 별은 "한 번에 맞힌 문제" 기준이라, 찍어서 맞히는 것보다 차분히 푸는 쪽이 유리하다.
+   * 결과 화면을 보여 주고 스타를 적립한다. A.startGame 의 onEnd 콜백으로 불린다.
+   * 스타는 "한 번에 맞힌 문제" 기준이라, 찍어서 맞히는 것보다 차분히 푸는 쪽이 유리하다.
+   * 받은 스타는 이번 판에 고른 히어로의 팀 스타로 쌓이고, 그 팀의 다음 히어로가 합류할 수 있다.
    * @param {RoundResult} r
    */
   function showResult(r) {
     stopGame();
-    const before = state.stars;
+    const family = A.findFamily(A.findHero(state.heroId));
+    const wasUnlocked = new Set(A.HEROES.filter(isUnlocked).map((h) => h.id));
     const earned = r.firstTry + (r.perfect ? A.RULES.perfectBonusStars : 0);
     state.stars += earned;
+    state.teamStars[family.id] = teamStarsOf(family.id) + earned;
     store.set('stars', state.stars);
-    const newHeroes = A.HEROES.filter((h) => h.unlockStars > before && h.unlockStars <= state.stars);
+    store.set('teamStars', state.teamStars);
+    const newHeroes = A.HEROES.filter((h) => isUnlocked(h) && !wasUnlocked.has(h.id));
+    const next = nextHeroOf(family);
 
     $('#resultTitle').textContent =
       r.heartsLeft <= 0 ? '💪 아쉬워요! 다시 도전!' : r.perfect ? '🏆 퍼펙트 미션!' : '🎉 미션 완료!';
@@ -243,9 +309,13 @@
       ['점수', `${r.score}점`],
       ['한 번에 맞힌 문제', `${r.firstTry} / ${r.total}`],
       ['최고 콤보', `${r.bestCombo}`],
-      ['받은 별', `⭐ +${earned}${r.perfect ? ' (퍼펙트 보너스)' : ''}`],
-      ['모은 별', `⭐ ${state.stars}`],
+      [`받은 ${family.starName}`, `${family.star} +${earned}${r.perfect ? ' (퍼펙트 보너스)' : ''}`],
+      [`모은 ${family.starName}`, `${family.star} ${teamStarsOf(family.id)}`],
+      ['다음 합류', next ? `${next.name}까지 ${family.star} ${next.unlockStars - teamStarsOf(family.id)}개` : `${family.name} 완성! 🎉`],
     ];
+    // 이번 판에 틀린 문제는 모두 복습 노트에 저장된다 (이미 있던 문제는 다시 처음 상자로)
+    if (r.mistakes.length) stats.push(['📒 복습 노트에 저장', `${r.mistakes.length}문제`]);
+    if (r.reviewMastered) stats.push(['🎓 복습 졸업', `${r.reviewMastered}문제`]);
     for (const [k, v] of stats) {
       const row = document.createElement('div');
       row.innerHTML = '<dt></dt><dd></dd>';
@@ -262,7 +332,7 @@
       box.className = 'unlock-hero';
       box.appendChild(heroCanvas(hero, 64, 72));
       const p = document.createElement('p');
-      p.textContent = `🆕 ${hero.universe}에서 ${hero.name}가 합류했어요!`;
+      p.textContent = `🆕 ${hero.universe}에서 ${hero.name}${josaIGa(hero.name)} 합류했어요!`;
       box.appendChild(p);
       unlock.appendChild(box);
     }

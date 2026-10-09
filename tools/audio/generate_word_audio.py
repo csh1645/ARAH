@@ -55,7 +55,8 @@ MANIFEST_TEMPLATE = """/**
 def read_words():
     """words.js 에서 en: '단어' 값을 순서대로 읽는다."""
     text = WORDS_JS.read_text(encoding="utf-8")
-    words = re.findall(r"en:\s*'([a-z]+)'", text)
+    # words.js 는 분류별 ['apple', '사과', '🍎', 1] 묶음 형식
+    words = re.findall(r"\[\s*'([a-z]+)'\s*,", text)
     if not words:
         sys.exit(f"단어를 찾지 못했습니다: {WORDS_JS}")
     return words

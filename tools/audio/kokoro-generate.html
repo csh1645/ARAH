@@ -58,10 +58,12 @@
   const log = (msg) => { $('#log').textContent += `\n${msg}`; $('#log').scrollTop = 1e9; };
   window.genResult = { done: false, ok: [], failed: [] }; // 자동화 · 점검용 상태
 
-  /** words.js 에서 en 값을 읽는다 (게임과 같은 원본을 쓰기 위해). */
+  /** words.js 를 그대로 실행해 단어 목록을 얻는다 (게임과 같은 원본 · 형식이 바뀌어도 안전). */
   async function readWords() {
-    const text = await (await fetch('/web/src/data/words.js')).text();
-    return [...text.matchAll(/en:\s*'([a-z]+)'/g)].map((m) => m[1]);
+    const text = await (await fetch('/web/src/data/words.js', { cache: 'reload' })).text();
+    const fakeWindow = { ARAH: {} };
+    new Function('window', text)(fakeWindow); // 우리 저장소의 데이터 파일 (외부 입력 아님)
+    return fakeWindow.ARAH.WORDS.map((w) => w.en);
   }
 
   /** 앞뒤 무음을 자르고 음량을 맞춘다. */
