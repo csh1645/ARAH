@@ -72,6 +72,21 @@
         <button id="menuBtn" type="button" class="secondary">🏠 메뉴로</button>
       </div>
     </section>
+
+    <!-- 새 히어로 합류 축하: 카드를 눌러 뒤집으면 히어로가 등장한다 (ui/app.js celebrateJoin) -->
+    <div id="joinOverlay" class="join-overlay" hidden>
+      <div id="joinConfetti" class="join-confetti" aria-hidden="true"></div>
+      <p id="joinTitle" class="join-title">새 히어로 합류!</p>
+      <button id="joinCard" type="button" class="join-card" aria-label="카드를 눌러 새 히어로를 만나 봐요">
+        <span class="join-face join-back">
+          <span id="joinStar" class="join-star"></span>
+          <span class="join-tap">눌러서 열어 봐요!</span>
+        </span>
+        <span id="joinFront" class="join-face join-front"></span>
+      </button>
+      <p id="joinLine" class="join-line" hidden></p>
+      <button id="joinOk" type="button" class="primary" hidden>좋아요! 🎉</button>
+    </div>
   </main>
 
   <!-- 로드 순서 = 의존 순서 (doc/standards/coding-standards.md 1·2절) -->
@@ -86,6 +101,7 @@
   <!-- data -->
   <script src="src/data/curriculum.js"></script>
   <script src="src/data/heroes.js"></script>
+  <script src="src/data/hero-lines.js"></script>
   <script src="src/data/words.js"></script>
   <script src="src/data/audio-manifest.js"></script>
   <!-- questions -->

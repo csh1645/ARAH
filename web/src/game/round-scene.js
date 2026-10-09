@@ -3,7 +3,7 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily, A.heroLine
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -20,6 +20,7 @@
  *   heroShoot()     투사체 발사 동작 (공격 자세 · 반동 · 발사음)
  *   meleeTo()       근접 팀(거인 · 표범)이 목표까지 뛰어올라 때리고 돌아오는 동작
  *   setHeroBase() / setHeroPose()  히어로 애니메이션 (서기 · 달리기 · 점프 · 공격 · 아야 · 만세)
+ *   heroSay(kind)   히어로 말풍선 (판 시작 · 정답 · 콤보 · 오답 · 끝은 기반이 자동으로 부른다)
  *
  * 게임 좌표는 960 x 640 고정이며, Phaser Scale.FIT 이 실제 화면 크기에 맞춰 늘리고 줄인다.
  */
@@ -85,6 +86,15 @@
   const MELEE_GO_MS = 340; // 근접 공격: 목표까지 뛰어가는 시간 (히어로 속도 능력으로 나눈다)
   const MELEE_BACK_MS = 300; // 근접 공격: 돌아오는 시간
   const MELEE_DEFAULT_ARC = 120;
+
+  // ----- 히어로 말풍선 (대사는 data/hero-lines.js) -----
+  // 매번 말하면 시끄럽고 문제 읽기를 방해하므로 정답 · 오답 때는 확률로만, 콤보 · 시작 · 끝은 꼭 말한다.
+  const SAY_MS = 1500; // 말풍선이 떠 있는 시간
+  const SAY_CORRECT_CHANCE = 0.35; // 정답일 때 말할 확률
+  const SAY_CATCHPHRASE_CHANCE = 0.25; // 정답 대사 중 자기만의 한마디를 쓸 확률
+  const SAY_WRONG_CHANCE = 0.6; // 틀렸을 때 격려 대사를 말할 확률
+  const SAY_START_DELAY = 300;
+  const SAY_3D_Y = 365; // 3D 문 통과처럼 Phaser 히어로가 없을 때 말풍선 높이
   const AMBIENT_DEPTH = -1; // 별 반짝임 · 구름 · 서치라이트 (하늘 앞, 도시 뒤)
 
   class RoundScene extends Phaser.Scene {
@@ -142,6 +152,9 @@
       this.events.once('shutdown', () => A.Sfx.music.stop());
       this.events.once('destroy', () => A.Sfx.music.stop());
       this.createHud();
+      this.bubble = null;
+      this.events.on('update', this.placeBubble, this);
+      this.time.delayedCall(SAY_START_DELAY, () => this.heroSay('catchphrase', true)); // 판 시작: 자기만의 한마디
       this.showIntro(this.introText());
       this.time.delayedCall(INTRO_MS, () => this.nextQuestion());
     }
@@ -233,6 +246,8 @@
       this.sfx('correct');
       if (x !== undefined) this.celebrate(x, y);
       if (!this.inMelee) this.setHeroPose('win'); // 만세! (근접 공격 중에는 때리는 자세를 유지)
+      if (COMBO_MILESTONES.includes(this.combo)) this.heroSay('combo', true);
+      else if (Math.random() < SAY_CORRECT_CHANCE) this.heroSay(Math.random() < SAY_CATCHPHRASE_CHANCE ? 'catchphrase' : 'correct');
       return pts;
     }
 
@@ -253,6 +268,7 @@
       this.flashScreen(0xff3355, loseHeart ? 0.22 : 0.12);
       this.sfx(loseHeart ? 'hurt' : 'wrong');
       this.setHeroPose('hurt'); // 아야! 움찔 (땀방울 · 어지러운 별)
+      if (Math.random() < SAY_WRONG_CHANCE) this.heroSay('wrong'); // 탓하지 않고 다시 해 보자는 격려
       if (!loseHeart) return;
       this.tweens.add({ targets: this.heartText, x: { from: 12, to: 24 }, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.heartText.setX(18) });
     }
@@ -427,6 +443,7 @@
       A.Sfx.music.stop();
       this.sfx(this.hearts <= 0 ? 'lose' : 'win');
       this.heroFinale(this.hearts > 0);
+      this.heroSay(this.hearts > 0 ? 'win' : 'lose', true);
       this.qText.setText('');
       this.hintText.setText('');
       const t = this.add
@@ -660,6 +677,67 @@
           if (opts.onLand) opts.onLand();
         });
       });
+    }
+
+    // ---------- 말풍선 ----------
+
+    /**
+     * 히어로 머리 위에 대사 말풍선을 띄운다. 팀 말투 · 히어로 한마디는 data/hero-lines.js (A.heroLine).
+     * @param {'catchphrase'|'start'|'correct'|'combo'|'wrong'|'win'|'lose'} kind
+     * @param {boolean} [important=false] true 면 떠 있는 말풍선을 바꿔서라도 말한다 (시작 · 콤보 · 끝)
+     */
+    heroSay(kind, important = false) {
+      if (!important && this.bubble && this.bubble.active) return; // 말이 겹치지 않게
+      const msg = A.heroLine(this.hero, kind);
+      if (!msg) return;
+      this.clearBubble();
+      const t = this.add.text(0, 0, msg, { fontFamily: FONT, fontSize: '22px', color: '#1b1f3b' }).setOrigin(0.5);
+      const w = t.width + 28;
+      const h = t.height + 14;
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 0.97);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+      g.fillTriangle(-9, h / 2 - 2, 9, h / 2 - 2, 0, h / 2 + 12); // 말꼬리 (히어로 쪽)
+      g.lineStyle(3, this.shotColor, 1); // 테두리는 팀 색
+      g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+      const c = this.add.container(0, 0, [g, t]).setDepth(DEPTH.popup).setScale(0);
+      c.bw = w;
+      c.bh = h;
+      this.bubble = c;
+      this.placeBubble();
+      this.tweens.add({ targets: c, scale: 1, duration: 180, ease: 'Back.Out' });
+      this.time.delayedCall(SAY_MS, () => {
+        if (this.bubble !== c) return; // 이미 다른 말풍선으로 바뀜
+        this.tweens.add({ targets: c, alpha: 0, scale: 0.8, duration: 200, onComplete: () => c.destroy() });
+        this.bubble = null;
+      });
+    }
+
+    clearBubble() {
+      if (this.bubble) this.bubble.destroy();
+      this.bubble = null;
+    }
+
+    /** 매 프레임: 말풍선이 히어로를 따라다닌다 (점프 · 이동 중에도). 화면 밖으로 나가지 않게 자른다. */
+    placeBubble() {
+      const c = this.bubble;
+      if (!c || !c.active) return;
+      let x;
+      let y;
+      const p = this.player;
+      if (p && p.active) {
+        x = p.x;
+        y = p.y - (GAME.HERO_SIZE.h / 2) * Math.abs(p.scaleY) - c.bh / 2 - 12;
+      } else if (this.view && this.view.heroScreenX) { // 3D 화면: 히어로가 Three.js 쪽에 있다
+        x = this.view.heroScreenX();
+        y = SAY_3D_Y;
+      } else {
+        return;
+      }
+      c.setPosition(
+        Phaser.Math.Clamp(x, c.bw / 2 + 8, W - c.bw / 2 - 8),
+        Math.max(GAME.HUD_H + c.bh / 2 + 8, y),
+      );
     }
 
     /** 판이 끝남: 이겼으면 승리 춤(만세 · 깡충), 졌으면 털썩. 3D 화면처럼 Phaser 히어로가 없으면 건너뛴다. */

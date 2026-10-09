@@ -3,7 +3,7 @@
  *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review
  * @layer ui
  * @depends A.storage, A.speak, A.MODES, A.SUBJECTS, A.LEVELS, A.RULES, A.HEROES, A.findHero, A.drawHero,
- *          A.GAME_MODES, A.startGame
+ *          A.findFamily, A.heroLine, A.Sfx, A.GAME_MODES, A.startGame
  * @see doc/planning/game-design.md (6. 점수와 보상, 8. 화면 구성)
  *
  * 보안 규칙: 데이터에서 온 문자열은 항상 textContent 로 넣는다. innerHTML 에는 고정 마크업만 쓴다.
@@ -104,14 +104,20 @@
     for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
   }
 
-  function heroCanvas(hero, w, h) {
+  /**
+   * @param {Hero} hero
+   * @param {number} w
+   * @param {number} h
+   * @param {string} [pose] 자세 (A.HERO_POSES, 기본 서 있기)
+   */
+  function heroCanvas(hero, w, h, pose) {
     const cv = document.createElement('canvas');
     const ratio = window.devicePixelRatio || 1;
     cv.width = w * ratio;
     cv.height = h * ratio;
     cv.style.width = `${w}px`;
     cv.style.height = `${h}px`;
-    A.drawHero(cv.getContext('2d'), hero, cv.width, cv.height);
+    A.drawHero(cv.getContext('2d'), hero, cv.width, cv.height, { pose });
     return cv;
   }
 
@@ -364,6 +370,77 @@
       list.appendChild(li);
     }
     show('result');
+    celebrateJoin(newHeroes);
+  }
+
+  // ---------- 새 히어로 합류 축하 ----------
+  // 결과 화면 위에 카드를 띄우고, 아이가 직접 눌러 뒤집으면 히어로가 만세 자세로 등장한다.
+  // (한 판에 한 명만 열리지만, 혹시 여러 명이면 차례로 보여 준다)
+
+  const CONFETTI_COLORS = ['#ffd166', '#06d6a0', '#4cc9f0', '#ff4fa3', '#e63946', '#ffffff'];
+  const CONFETTI_COUNT = 60;
+  let joinQueue = [];
+
+  /** @param {Hero[]} heroes 이번 판에 새로 합류한 히어로 */
+  function celebrateJoin(heroes) {
+    joinQueue = heroes.slice();
+    showNextJoin();
+  }
+
+  function showNextJoin() {
+    const hero = joinQueue.shift();
+    const overlay = $('#joinOverlay');
+    if (!hero) {
+      overlay.hidden = true;
+      $('#retryBtn').focus();
+      return;
+    }
+    const family = A.findFamily(hero);
+    $('#joinTitle').textContent = `${family.star} ${family.name}에 새 히어로 합류!`;
+    $('#joinStar').textContent = family.star;
+    const front = $('#joinFront');
+    front.replaceChildren(heroCanvas(hero, 150, 168, 'win'));
+    for (const [cls, text] of [['join-name', hero.name], ['join-universe', hero.universe], ['join-ability', hero.abilityText]]) {
+      const el = document.createElement('p');
+      el.className = cls;
+      el.textContent = text;
+      front.appendChild(el);
+    }
+    $('#joinCard').classList.remove('flipped');
+    $('#joinCard').dataset.heroId = hero.id;
+    $('#joinLine').hidden = true;
+    $('#joinOk').hidden = true;
+    $('#joinConfetti').replaceChildren();
+    overlay.hidden = false;
+    $('#joinCard').focus();
+    A.Sfx.play('combo');
+  }
+
+  /** 카드를 누름: 뒤집고, 색종이 · 팡파르 · 히어로의 한마디 */
+  function revealJoin() {
+    const card = $('#joinCard');
+    if (card.classList.contains('flipped')) return;
+    card.classList.add('flipped');
+    A.Sfx.play('win');
+    const box = $('#joinConfetti');
+    for (let i = 0; i < CONFETTI_COUNT; i++) {
+      const c = document.createElement('span');
+      c.className = 'join-confetti-piece';
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+      c.style.animationDuration = `${1.6 + Math.random() * 1.6}s`;
+      c.style.animationDelay = `${Math.random() * 0.5}s`;
+      box.appendChild(c);
+    }
+    const hero = A.findHero(card.dataset.heroId);
+    const line = $('#joinLine');
+    line.textContent = `“${A.heroLine(hero, 'catchphrase')}”`;
+    // 카드가 다 뒤집힌 뒤 대사와 확인 버튼을 보여 준다
+    setTimeout(() => {
+      line.hidden = false;
+      $('#joinOk').hidden = false;
+      $('#joinOk').focus();
+    }, 650);
   }
 
   // ---------- 소리 설정 ----------
@@ -396,6 +473,8 @@
   document.addEventListener('DOMContentLoaded', () => {
     $('#startBtn').addEventListener('click', startRound);
     $('#quitBtn').addEventListener('click', backToMenu);
+    $('#joinCard').addEventListener('click', revealJoin);
+    $('#joinOk').addEventListener('click', showNextJoin);
     // 소리 켜기 · 끄기: 메뉴는 효과음 · 배경음 따로, 게임 중 버튼은 둘 다 한 번에
     $('#sfxToggle').addEventListener('click', () => toggleSound('sfx'));
     $('#bgmToggle').addEventListener('click', () => toggleSound('bgm'));

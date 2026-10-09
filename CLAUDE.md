@@ -26,7 +26,9 @@
 | 동적 연출, 폰 세로 안내 | ✅ |
 | 히어로 애니메이션: 자세 8프레임(서기 · 숨쉬기 · 달리기 2 · 공격 · 점프 · 아야 · 만세) + 승리 춤, 3D 도 같은 프레임 | ✅ `hero-art.js` POSES · `round-scene.js` setHeroBase/setHeroPose ([game-design 9.1](doc/planning/game-design.md)) |
 | 근접 팀(거인 · 표범)은 모든 놀이에서 쏘지 않고 직접 뛰어올라 때림 | ✅ 기반 `meleeTo()` (드론 잡기 · 철자 잇기 · 보스 배틀 공통) |
-| **다음 후보: 아이 흥미 요소** (사용자 요청 "아이가 할 거라 흥미가 생길 것들") | ⏳ 제안 후 사용자 선택 대기 — 예: 히어로 대사 말풍선, 합류 축하 연출, 일일 미션 · 출석 스타, 보스 종류 추가, 스티커 도감 |
+| 히어로 대사 말풍선: 팀별 말투 8종 + 48명 한마디 (`data/hero-lines.js`, 기반 `heroSay()`) | ✅ [game-design 9.2](doc/planning/game-design.md) |
+| 새 히어로 합류 축하: 카드 눌러 뒤집기 · 색종이 · 한마디 (`ui/app.js` celebrateJoin) | ✅ |
+| **다음 후보 (사용자 결정 대기)** — 사용자: "1 · 2번 진행 뒤 고민" | ⏳ 남은 제안: ③ 오늘의 미션 · 출석 스타 ④ 보스 종류 추가 · 처치 도감 ⑤ 스티커 · 칭호. 사용자가 고르기 전에는 시작하지 않는다 |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
 | 원어민 발음 파일 40개 | ✅ kokoro-js(Kokoro-82M, `af_heart`)로 생성 · 적용. 단어 추가 시 생성 절차: [web/assets/audio/words/README.md](web/assets/audio/words/README.md) |
@@ -57,6 +59,8 @@ web/src/
 * **히어로 능력 공식은 기반에만:** 제한 시간 `timeLimitMs()`, 가짜 보기 `decoyIndex()` (모드에 복사하지 않는다)
 * **한 화면에 여러 문제(짝꿍 찾기):** `awardCorrect(x, y, q)`, `penalize(loseHeart, q)`, `recordReview(q)` 로 문제를 지정한다
 * **새 팀:** `heroes.js` 의 HERO_FAMILIES(shot · star · attack · travel · fail) + 히어로 6명 + `hero-art.js` 체형 + `attacks.js` 공격 + `travels.js` 이동
+* **히어로 대사는 데이터에만:** 문장은 `data/hero-lines.js` (팀 말투 표를 지킨다, 원조 공식 대사 그대로 금지). 모드는 대사를 직접 띄우지 않는다 — 시작 · 정답 · 콤보 · 오답 · 끝에서 기반이 `heroSay()` 를 부른다
+* **이름 충돌 방지:** CSS 클래스 · keyframes · DOM id · 텍스처 키 · `A.*` 는 컴포넌트 접두어 ([개발 표준 3.1](doc/standards/coding-standards.md))
 * **히어로 동작은 기반 경유:** 쏘기 `heroShoot()`, 근접 `meleeTo(target, onImpact, {land})`, 애니메이션 `setHeroBase('idle'|'run'|'jump')` · `setHeroPose('attack'|'win'|'hurt')`, 둥실둥실 `startHeroBob()`. 정답(만세) · 오답(아야) · 판 끝(승리 춤)은 기반이 자동으로 한다. 히어로 크기는 `createHero(x, y, scale)` 로만 정한다 (반동 연출의 기준)
 * **공격 모양은 기반 경유:** 모드는 투사체 위치만 계산하고 `this.drawAttack(g, from, to)` · `this.attackHit(x, y)` · `this.drawTether()` 를 부른다. 스타일 객체는 `this.attackStyle` (이름 주의: 예전에 `this.attack` 으로 했다가 보스 배틀의 공격 메서드와 겹쳐 오류가 났음 → 보스의 동작은 `strike()`)
 * **코드와 문서를 함께 바꾼다:** 규칙 → `game-design.md`, 출제 범위 → `curriculum.md`, 중요한 결정 → 새 ADR, 테스트 → `doc/qa/`

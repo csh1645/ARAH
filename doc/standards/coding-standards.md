@@ -12,7 +12,7 @@
 ```
 web/src/
 ├─ core/        공통 기반 (랜덤, 저장소, 음성)           → 다른 계층에 의존하지 않음
-├─ data/        순수 데이터 (히어로, 단어, 규칙)          → core 만 사용
+├─ data/        순수 데이터 (히어로, 히어로 대사, 단어, 규칙) → core 만 사용
 ├─ questions/   문제 생성 로직                            → core, data 만 사용
 ├─ game/        Phaser 게임 (위 모든 계층 사용 가능)
 │  ├─ hero-art.js     캐릭터 그리기 (자세 프레임 POSES 포함)
@@ -42,7 +42,7 @@ core ← data ← questions ← game / ui
 |---|---|
 | 새 놀이 방법(모드) | `game/modes/<id>-mode.js` — 절차는 [ADR-0003](../decisions/ADR-0003-game-mode-architecture.md) |
 | 새 과목 (예: 시계 읽기) | `questions/clock.js` + `questions/index.js`에 연결 + `data/curriculum.js`의 `SUBJECTS`에 추가 |
-| 새 히어로 | `data/heroes.js`에 항목 추가 (새 외형이면 `game/hero-art.js`에 style 추가) |
+| 새 히어로 | `data/heroes.js`에 항목 추가 + `data/hero-lines.js`에 한마디 (새 외형이면 `game/hero-art.js`에 style 추가) |
 | 새 단어 | `data/words.js` |
 | 효과음 · 이미지 | `web/assets/audio/`, `web/assets/images/` |
 | 외부 라이브러리 로컬 사본 | `web/assets/vendor/` |
@@ -87,6 +87,22 @@ core ← data ← questions ← game / ui
 
 * 함수 이름은 동사로 시작합니다: `make`, `draw`, `render`, `show`, `on`(이벤트 처리)
 * 불리언은 `is`, `has`로 시작합니다: `isCorrect`, `isUnlocked`
+
+### 3.1 이름 충돌 방지 (공유 이름 공간)
+
+이 프로젝트는 전역 `A`, 하나의 CSS 파일, 하나의 DOM, Phaser 텍스처 캐시를 모든 기능이 함께 씁니다. 비슷한 기능(예: 축하 연출, 말풍선)이 나중에 또 생겨도 겹치지 않도록 **기능(컴포넌트) 접두어**를 붙입니다.
+
+| 공유 공간 | 규칙 | 예시 | 피할 것 |
+|---|---|---|---|
+| 파일 | kebab-case, 역할이 드러나는 이름. 같은 계층에 비슷한 파일이 생기면 대상 접두어 | `hero-art.js`, `hero-lines.js` | `lines.js`, `utils2.js` |
+| 전역 `A.*` | 데이터 표는 UPPER_SNAKE (`A.TEAM_LINES`), 함수는 camelCase 동사 (`A.heroLine`). 추가 전 `grep "A.이름 ="` 로 중복 확인 | `A.HERO_CATCHPHRASES` | `A.LINES`, `A.data` |
+| CSS 클래스 · `@keyframes` | `컴포넌트-요소` (BEM 비슷하게). 애니메이션 이름도 컴포넌트 접두어 | `.join-card`, `.join-confetti-piece`, `@keyframes join-pop`, `rotate-hint-tilt` | `.confetti`, `.card`, `@keyframes pop` |
+| HTML id | camelCase, 컴포넌트 접두어 | `#joinOverlay`, `#joinOk` | `#overlay`, `#ok` |
+| Phaser 텍스처 키 | `대상-이름` | `hero-idle`, `fx-spark` | `hero`, `spark` |
+| localStorage 키 | `arah.` 접두어 (A.storage 가 자동으로 붙임) + 기능 이름 | `teamStars`, `review` | `data`, `list` |
+| 기반 장면 속성 · 메서드 | 하위 모드 메서드와 겹치지 않게 대상 이름을 붙인다 (5절 참고) | `attackStyle`, `heroAnim`, `heroSay()` | `attack`, `anim`, `say()` |
+
+* 여러 기능에서 다시 쓸 만한 것(예: 색종이)은 처음에는 그 컴포넌트 접두어로 만들고, 두 번째로 필요해질 때 공통 이름(`.fx-…`)으로 올려 한곳에 둡니다 (같은 코드 복사 금지)
 
 ---
 
