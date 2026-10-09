@@ -24,6 +24,8 @@
 | 발음 파일 123개 (전 단어) | ✅ kokoro-js `af_heart`, 총 약 4MB, 디코딩 검증 완료 |
 | 효과음 · 배경음 (팀별 발사음 8종 · 상황음 13종 · 배경음 2곡) | ✅ `core/sfx.js` Web Audio 합성, 모드는 `this.sfx()` · `this.shotSfx()` 만 호출 |
 | 동적 연출, 폰 세로 안내 | ✅ |
+| **다음 작업 1: 캐릭터 애니메이션** (사용자 요청 2026-10-10 "단조롭다") | ⏳ `hero-art.js` 에 자세(pose: idle · run · attack · jump · hurt · win) 인자를 추가해 여러 프레임 텍스처를 만들고, 상황에 맞게 바꿔 끼운다 (숨쉬기 · 달리기 팔다리 · 공격 자세 · 착지 · 피격 · 승리 포즈). 3D 스프라이트도 같은 프레임 사용 |
+| **다음 작업 2: 근접 팀은 쏘지 않게** (사용자 지적 "헐크가 아직 뭘 쏜다") | ⏳ 거인(바위)·표범(발톱)은 드론 잡기 · 철자 잇기에서도 투사체 대신 **직접 뛰어가 때리기**(보스전 `meleeAttack` 방식)로. attacks.js 의 `melee` 를 모든 모드에서 존중하도록 공통화(기반에 `meleeTo(target, onImpact)`) |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
 | 원어민 발음 파일 40개 | ✅ kokoro-js(Kokoro-82M, `af_heart`)로 생성 · 적용. 단어 추가 시 생성 절차: [web/assets/audio/words/README.md](web/assets/audio/words/README.md) |
