@@ -17,6 +17,7 @@
 |---|---|
 | 놀이 6종 (드론 잡기 · 빌딩 스윙 · 문 통과(3D 자동) · 철자 잇기 · 짝꿍 찾기 · 보스 배틀) — 서로 겹치지 않게 | ✅ 모두 완주 테스트 통과 |
 | 빌딩 스윙: 팀별 건너가기 8종 (`game/travels.js`) | ✅ |
+| 팀별 공격 모양 8종 (`game/attacks.js`): 빔 · 방패 던지기 · 번개 · 바위 · 화살 · 구슬 · 발톱, 보스전 거인 점프 · 표범 달려들기 · 방패 복귀 | ✅ |
 | 히어로 48명 · 팀 스타 · 한 번에 한 명 합류 · 기존 진행 이전 | ✅ (예전 별 → 거미 스타, `ui/app.js` LEGACY_UNLOCKS) |
 | 1~6단계 수학 · 영어 123단어 · 듣기 문제 | ✅ |
 | 오답 복습 노트 (간격 반복, `questions/review.js`) | ✅ |
@@ -40,7 +41,7 @@ web/src/
 ├─ core/       util(랜덤 · bezier2) · storage · speech   (의존 없음)
 ├─ data/       curriculum(단계 · 규칙 · 놀이 목록) · heroes(팀 · 48명) · words · audio-manifest   (값만, 로직 없음)
 ├─ questions/  math · english · index · review(복습 노트)   (엔진 독립: Phaser/DOM 금지)
-├─ game/       round-scene(공통 규칙 · 능력 계산) · travels(팀별 이동) · modes/(놀이 6종) · views/(문 통과 2D·3D) · hero-art · launcher
+├─ game/       round-scene(공통 규칙 · 능력 계산 · 소리 · 공격 그리기) · travels(팀별 이동) · attacks(팀별 공격) · modes/(놀이 6종) · views/(문 통과 2D·3D) · hero-art · launcher
 └─ ui/         app.js (메뉴 · 결과 · 모바일 처리)
 ```
 
@@ -52,7 +53,8 @@ web/src/
 * **3D:** 규칙(`modes/gate-mode.js`)과 화면(`views/gate-view-2d.js`, `gate-view-3d.js`) 분리. WebGL 이 되면 3D 자동 (`GateScene.use3D()`), 3D 일 때 `transparent` 로 Phaser 캔버스를 투명하게 해 HUD만 겹친다 ([ADR-0005](doc/decisions/ADR-0005-threejs-3d.md))
 * **히어로 능력 공식은 기반에만:** 제한 시간 `timeLimitMs()`, 가짜 보기 `decoyIndex()` (모드에 복사하지 않는다)
 * **한 화면에 여러 문제(짝꿍 찾기):** `awardCorrect(x, y, q)`, `penalize(loseHeart, q)`, `recordReview(q)` 로 문제를 지정한다
-* **새 팀:** `heroes.js` 의 HERO_FAMILIES(shot · star · travel · fail) + 히어로 6명 + `hero-art.js` 체형 + `travels.js` 이동
+* **새 팀:** `heroes.js` 의 HERO_FAMILIES(shot · star · attack · travel · fail) + 히어로 6명 + `hero-art.js` 체형 + `attacks.js` 공격 + `travels.js` 이동
+* **공격 모양은 기반 경유:** 모드는 투사체 위치만 계산하고 `this.drawAttack(g, from, to)` · `this.attackHit(x, y)` · `this.drawTether()` 를 부른다. 스타일 객체는 `this.attackStyle` (이름 주의: 예전에 `this.attack` 으로 했다가 보스 배틀의 공격 메서드와 겹쳐 오류가 났음 → 보스의 동작은 `strike()`)
 * **코드와 문서를 함께 바꾼다:** 규칙 → `game-design.md`, 출제 범위 → `curriculum.md`, 중요한 결정 → 새 ADR, 테스트 → `doc/qa/`
 
 ## 4. 보안 (위반 금지)

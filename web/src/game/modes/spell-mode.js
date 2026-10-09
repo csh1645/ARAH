@@ -2,7 +2,7 @@
  * @file 🕸️ 철자 잇기 모드 (영어 전용). 그림 · 발음으로 단어를 알려 주고,
  *       떠다니는 알파벳 블록을 순서대로 거미줄로 낚아채 빈칸으로 끌어와 단어를 완성한다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.4 철자 잇기)
  *
  * 판정: 다음 순서의 글자 → 거미줄로 끌어와 빈칸에 채움 / 모두 채우면 정답
@@ -205,22 +205,29 @@
       return this.blocks.find((b) => !b.used && Math.abs(x - b.c.x) <= BLOCK / 2 + 8 && Math.abs(y - b.c.y) <= BLOCK / 2 + 8) || null;
     }
 
-    // ---------- 거미줄로 고르기 ----------
+    // ---------- 팀 공격으로 고르기 ----------
 
-    /** 블록 b 에 거미줄을 쏜다. 다음 순서의 글자면 끌어오고, 아니면 줄이 끊어진다. */
+    /**
+     * 블록 b 에 팀 공격(거미줄 · 빔 · 방패 · 화살 …)을 쏜다. 다음 순서의 글자면 끌어오고, 아니면 줄이 끊어진다.
+     * this.web.phase: 'shoot' 날아가는 중 / 'pull' 끌어오는 중 / 'snap' 끊어짐 (update 에서 모양을 다르게 그린다)
+     */
     pick(b) {
       if (!this.waveActive || this.busy || !b || b.used) return;
       this.busy = true;
       const expected = this.word[this.idx];
-      const speed = this.ab.webSpeed || 1;
+      const speed = (this.ab.webSpeed || 1) * this.attackStyle.speed;
       this.player.setFlipX(b.c.x < this.player.x - 10);
       const tip = { ...this.hand() };
-      this.web = { to: tip, color: this.shotColor };
+      this.web = { to: tip, phase: 'shoot' };
       this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true }); // 발사 반동
       this.shotSfx();
       this.tweens.add({
         targets: tip, x: b.c.x, y: b.c.y, duration: SHOOT_MS / speed,
-        onComplete: () => (b.ch === expected ? this.pull(b) : this.snap(b)),
+        onComplete: () => {
+          this.attackHit(b.c.x, b.c.y);
+          if (b.ch === expected) this.pull(b);
+          else this.snap(b);
+        },
       });
     }
 
@@ -232,7 +239,7 @@
       const slot = this.slots[this.idx];
       this.idx++;
       this.wrongCount = 0;
-      this.web = { to: b.c, color: this.shotColor };
+      this.web = { to: b.c, phase: 'pull' };
       b.c.setDepth(DEPTH.world + 2);
       this.tweens.add({
         targets: b.c, x: slot.x, y: slot.y, scale: 0.85, duration: PULL_MS / (this.ab.webSpeed || 1), ease: 'Cubic.InOut',
@@ -249,7 +256,7 @@
 
     /** 틀린 글자: 거미줄이 빨갛게 끊어지고 블록이 흔들린다. */
     snap(b) {
-      this.web.color = 0xff5c5c;
+      this.web = { to: { x: b.c.x, y: b.c.y }, phase: 'snap' };
       this.time.delayedCall(140, () => { this.web = null; });
       b.t.setColor('#ff5c5c');
       this.tweens.add({
@@ -293,12 +300,14 @@
       if (this.ended) return;
       const g = this.webGfx;
       g.clear();
-      if (this.web) {
-        const o = this.hand();
-        g.lineStyle(3, this.web.color, 0.95);
-        g.lineBetween(o.x, o.y, this.web.to.x, this.web.to.y);
-        g.fillStyle(this.web.color, 1);
-        g.fillCircle(this.web.to.x, this.web.to.y, 5);
+      if (!this.web) return;
+      const o = this.hand();
+      const to = this.web.to;
+      if (this.web.phase === 'shoot') this.drawAttack(g, o, to); // 팀 공격 모양
+      else if (this.web.phase === 'pull') this.drawTether(g, o, to); // 끌어오는 줄
+      else { // 끊어진 줄 (빨강)
+        g.lineStyle(3, 0xff5c5c, 0.95);
+        g.lineBetween(o.x, o.y, to.x, to.y);
       }
     }
   }

@@ -83,6 +83,8 @@
       const family = A.findFamily(this.hero);
       this.shotName = family.shot;
       this.shotColor = family.color;
+      /** @type {AttackStyle} 팀별 공격 모양 (거미줄 · 빔 · 방패 · 번개 · 바위 · 화살 · 구슬 · 발톱, game/attacks.js) */
+      this.attackStyle = A.attackOf(this.hero);
     }
 
     create() {
@@ -328,6 +330,36 @@
     /** 지금 히어로 팀의 발사음 (거미줄 슉 · 레이저 지잉 · 번개 콰직 …) */
     shotSfx() {
       A.Sfx.shot(this.hero.family);
+    }
+
+    // ---------- 공격 모양 (모드는 투사체 위치만 계산하고 모양은 여기에 맡긴다) ----------
+
+    /**
+     * 팀 공격 스타일로 투사체를 그린다 (거미줄 · 빔 · 날아가는 방패 · 번개 · 바위 · 화살 · 마법 구슬 · 발톱).
+     * @param {Phaser.GameObjects.Graphics} g 이번 프레임에 그릴 그래픽 (호출 전에 clear)
+     * @param {{x: number, y: number}} from 쏜 곳
+     * @param {{x: number, y: number}} to 투사체 머리
+     */
+    drawAttack(g, from, to) {
+      this.attackStyle.draw({ g, from, to, color: this.shotColor, time: this.time.now, look: this.hero.look });
+    }
+
+    /** 공격이 맞은 자리의 팀별 연출 (빔 섬광 · 바위 흔들림 · 발톱 자국 …) */
+    attackHit(x, y) {
+      this.attackStyle.hit(this, x, y);
+    }
+
+    /**
+     * 끌어오기 줄 (철자 잇기). 줄이 있는 스타일(거미줄 · 빔 · 번개)은 그 모양으로,
+     * 줄이 없는 스타일(방패 · 바위 · 화살 · 구슬 · 발톱)은 팀 색의 가는 "힘의 줄"로 그린다.
+     */
+    drawTether(g, from, to) {
+      if (this.attackStyle.rope) {
+        this.drawAttack(g, from, to);
+        return;
+      }
+      g.lineStyle(2, this.shotColor, 0.5);
+      g.lineBetween(from.x, from.y, to.x, to.y);
     }
 
     // ---------- 히어로 능력 공통 계산 (모드마다 같은 공식을 쓰도록 한곳에 둔다) ----------

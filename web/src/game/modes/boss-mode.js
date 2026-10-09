@@ -1,10 +1,11 @@
 /**
  * @file 👾 보스 배틀 모드 (연속 정답). 체력바가 있는 거대 악당 로봇과 싸운다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.6 보스 배틀)
  *
- * 판정: 정답 버튼 → 줄 공격으로 보스 체력 -1 (3콤보 이상이면 크리티컬 -2)
+ * 판정: 정답 버튼 → 팀 공격으로 보스 체력 -1 (3콤보 이상이면 크리티컬 -2)
+ *       공격 모양은 팀마다 다르다: 투사체(거미줄 · 빔 · 번개 · 화살 · 구슬), 돌아오는 방패, 뛰어들기(거인 내려찍기 · 표범 할퀴기)
  *       오답 버튼 → 보스가 막고 공격 충전이 빨라진다 (하트는 그대로, 그 버튼은 다시 못 고름)
  *       공격 충전이 가득 차면 → 보스 공격: 하트 -1, 정답을 알려 주고 다음 문제
  * 끝: 보스 체력 0 → 승리(그 자리에서 판 종료) / 하트 0 → 패배 / 문제를 다 쓰면 → 보스가 도망감
@@ -55,7 +56,8 @@
       this.buttons = [];
       this.busy = false;
       this.charge = 0;
-      this.shot = null; // { from, to, color, t } 줄 공격 그리기
+      this.shot = null; // { to } 히어로 공격 투사체 머리 (모양은 팀 공격 스타일)
+      this.enemyShot = null; // { from, to } 보스 레이저
 
       this.drawSky();
       const g = this.add.graphics().setDepth(DEPTH.bg);
@@ -188,36 +190,92 @@
 
     choose(btn) {
       if (!this.waveActive || this.busy || !btn || btn.used) return;
-      if (btn.isCorrect) this.attack(btn);
+      if (btn.isCorrect) this.strike(btn);
       else this.blocked(btn);
     }
 
-    /** 정답: 히어로가 줄 공격 → 보스 체력 감소 (콤보가 높으면 크리티컬) */
-    attack(btn) {
+    /**
+     * 정답: 히어로가 팀 공격 → 보스 체력 감소 (콤보가 높으면 크리티컬).
+     * (이름 주의: 공격 "모양"은 기반의 this.attackStyle, 이 함수는 보스를 "치는 동작")
+     */
+    strike(btn) {
       this.busy = true;
       btn.t.setColor('#06d6a0');
       const pts = this.awardCorrect(BOSS_X, BOSS_Y);
       const crit = this.combo >= CRIT_COMBO;
       const dmg = crit ? 2 : 1;
       if (this.q.speak) A.speak(this.q.speak);
-      const tip = { ...this.hand() };
-      this.shot = { to: tip, color: this.shotColor };
       this.shotSfx();
+      this.deliverAttack(() => {
+        this.sfx('hit');
+        this.attackHit(BOSS_X, BOSS_Y);
+        this.bossHp = Math.max(0, this.bossHp - dmg);
+        this.drawHp();
+        this.bossFlash.setFillStyle(0xffffff, 0.7);
+        this.tweens.add({ targets: this.bossFlash, fillAlpha: 0, duration: 250 });
+        this.tweens.add({ targets: this.bossC, x: BOSS_X + 12, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.bossC.setX(BOSS_X) });
+        this.popup(BOSS_X, BOSS_Y - 120, crit ? `크리티컬! -${dmg}  (+${pts})` : `-${dmg}  (+${pts})`, crit ? '#ff9f1c' : '#06d6a0');
+        if (this.bossHp <= 0) this.defeatBoss();
+        else this.endWave(650);
+      });
+    }
+
+    /**
+     * 팀 공격 스타일대로 보스에게 공격을 전달하고, 맞는 순간 onImpact 를 부른다.
+     *  - 기본: 투사체(거미줄 · 빔 · 번개 · 화살 · 구슬 …)가 날아간다
+     *  - returns(방패): 맞힌 뒤 손으로 돌아온다
+     *  - melee(거인 · 표범): 히어로가 직접 뛰어들어 때리고 제자리로 돌아온다
+     * @param {() => void} onImpact
+     */
+    deliverAttack(onImpact) {
+      const style = this.attackStyle;
+      if (style.melee) {
+        this.meleeAttack(style.melee.arc, onImpact);
+        return;
+      }
+      const tip = { ...this.hand() };
+      this.shot = { to: tip };
       this.tweens.add({ targets: this.player, scaleX: 1.4, scaleY: 1.2, duration: 70, yoyo: true });
       this.tweens.add({
-        targets: tip, x: BOSS_X, y: BOSS_Y, duration: SHOT_MS / (this.ab.webSpeed || 1),
+        targets: tip, x: BOSS_X, y: BOSS_Y, duration: SHOT_MS / ((this.ab.webSpeed || 1) * style.speed),
         onComplete: () => {
-          this.shot = null;
-          this.sfx('hit');
-          this.bossHp = Math.max(0, this.bossHp - dmg);
-          this.drawHp();
-          this.bossFlash.setFillStyle(0xffffff, 0.7);
-          this.tweens.add({ targets: this.bossFlash, fillAlpha: 0, duration: 250 });
-          this.tweens.add({ targets: this.bossC, x: BOSS_X + 12, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.bossC.setX(BOSS_X) });
-          this.popup(BOSS_X, BOSS_Y - 120, crit ? `크리티컬! -${dmg}  (+${pts})` : `-${dmg}  (+${pts})`, crit ? '#ff9f1c' : '#06d6a0');
-          if (this.bossHp <= 0) this.defeatBoss();
-          else this.endWave(650);
+          onImpact();
+          if (!style.returns) {
+            this.shot = null;
+            return;
+          }
+          const hand = this.hand(); // 방패가 손으로 돌아온다
+          this.tweens.add({ targets: tip, x: hand.x, y: hand.y, duration: 260, ease: 'Quad.In', onComplete: () => { this.shot = null; } });
         },
+      });
+    }
+
+    /** 히어로가 보스 앞까지 뛰어올라(arc) 때리고 돌아온다. 거인은 높이, 표범은 낮고 빠르게. */
+    meleeAttack(arc, onImpact) {
+      this.tweens.killTweensOf(this.player); // 둥실둥실 tween 정지 (경로 이동과 겹치지 않게)
+      const S = { x: HERO_X, y: HERO_Y };
+      const T = { x: BOSS_X - 170, y: BOSS_Y + 30 };
+      const C = { x: (S.x + T.x) / 2, y: Math.min(S.y, T.y) - arc };
+      const p = { t: 0 };
+      const go = (from, to, mid, ms, done) => {
+        p.t = 0;
+        this.tweens.add({
+          targets: p, t: 1, duration: ms, ease: 'Sine.InOut',
+          onUpdate: () => {
+            const pt = A.util.bezier2(from, mid, to, p.t);
+            this.player.setPosition(pt.x, pt.y);
+          },
+          onComplete: done,
+        });
+      };
+      const speed = this.ab.webSpeed || 1;
+      go(S, T, C, 340 / speed, () => {
+        this.tweens.add({ targets: this.player, angle: 20, duration: 70, yoyo: true }); // 내려찍기 · 할퀴기 동작
+        onImpact();
+        go(T, S, { x: C.x, y: C.y + arc * 0.5 }, 300 / speed, () => {
+          this.player.setPosition(HERO_X, HERO_Y).setAngle(0);
+          this.tweens.add({ targets: this.player, y: HERO_Y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+        });
       });
     }
 
@@ -237,8 +295,8 @@
       this.penalize(true);
       const right = this.buttons.find((b) => b.isCorrect);
       if (right) right.t.setColor('#ffd166');
-      this.shot = { to: { x: this.player.x, y: this.player.y }, from: { x: BOSS_X, y: BOSS_Y }, color: 0xff3355 };
-      this.time.delayedCall(350, () => { this.shot = null; });
+      this.enemyShot = { from: { x: BOSS_X, y: BOSS_Y }, to: { x: this.player.x, y: this.player.y } }; // 보스 레이저
+      this.time.delayedCall(350, () => { this.enemyShot = null; });
       this.tweens.add({ targets: this.player, x: HERO_X - 20, duration: 80, yoyo: true, repeat: 2 });
       this.popup(this.player.x + 40, HERO_Y - 110, `보스의 공격! 정답은 ${this.q.answer}`, '#ffd166');
       this.endWave(1500);
@@ -279,12 +337,13 @@
       this.drawCharge();
       const g = this.webGfx;
       g.clear();
-      if (this.shot) {
-        const from = this.shot.from || this.hand();
-        g.lineStyle(this.shot.from ? 6 : 3, this.shot.color, 0.95);
-        g.lineBetween(from.x, from.y, this.shot.to.x, this.shot.to.y);
-        g.fillStyle(this.shot.color, 1);
-        g.fillCircle(this.shot.to.x, this.shot.to.y, 6);
+      if (this.shot) this.drawAttack(g, this.hand(), this.shot.to); // 히어로 공격 (팀 스타일)
+      if (this.enemyShot) { // 보스 레이저 (빨강)
+        const e = this.enemyShot;
+        g.lineStyle(10, 0xff3355, 0.35);
+        g.lineBetween(e.from.x, e.from.y, e.to.x, e.to.y);
+        g.lineStyle(4, 0xffb3c1, 1);
+        g.lineBetween(e.from.x, e.from.y, e.to.x, e.to.y);
       }
     }
   }

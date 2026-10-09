@@ -18,6 +18,7 @@ web/src/
 │  ├─ hero-art.js     캐릭터 그리기
 │  ├─ round-scene.js  모든 모드 공통 규칙 (기반 장면)
 │  ├─ travels.js      팀별 건너가기 연출 (빌딩 스윙에서 사용)
+│  ├─ attacks.js      팀별 공격 모양 (드론 잡기 · 철자 잇기 · 보스 배틀에서 사용)
 │  ├─ modes/          놀이 방법별 장면: 규칙 · 판정 (catch, swing, gate, spell, match, boss)
 │  ├─ views/          모드의 화면 그리기 (gate-view-2d.js: Phaser, gate-view-3d.js: Three.js)
 │  └─ launcher.js     게임 시작 진입점 (A.startGame)
@@ -141,6 +142,7 @@ A.makeQuestion = function (subject, level) { ... };
 * 게임 수치(속도, 하트 수, 문제 수)는 코드에 직접 쓰지 않고 `data/curriculum.js`의 `A.RULES`에 둡니다
 * **같은 공식 · 로직을 두 곳 이상에 쓰지 않습니다.** 여러 모드가 쓰는 계산은 `RoundScene`(예: `timeLimitMs`, `decoyIndex`)이나 `core/util.js`(예: `bezier2`)로 올리고, 팀별로 달라지는 동작은 표(예: `A.TRAVELS`)로 분리합니다
 * **기능을 추가할 때마다 리팩토링 · 주석 · 문서 갱신을 함께 합니다** (사용자 기본 요구 사항)
+* **기반 클래스(RoundScene)에 속성을 추가할 때는 하위 모드의 메서드 이름과 겹치지 않는지 확인합니다.** 인스턴스 속성이 같은 이름의 메서드를 가려 오류가 납니다 (예: `this.attack` 속성 ↔ 보스 배틀 `attack()` 메서드 → `attackStyle` / `strike()` 로 분리)
 * 화면 문구(UI 텍스트)는 아이가 읽기 쉬운 짧은 해요체로 씁니다
 
 ---

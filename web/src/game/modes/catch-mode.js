@@ -1,7 +1,7 @@
 /**
  * @file 🎯 드론 잡기 모드. 차원 포털에서 내려오는 드론 중 정답 드론을 거미줄로 맞힌다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.1 드론 잡기)
  *
  * 판정: 정답 명중 → 다음 문제 / 오답 명중 → 하트 -1, 같은 문제 계속 / 정답 드론 놓침 → 하트 -1, 다음 문제
@@ -172,7 +172,8 @@
       const dx = tx - o.x;
       const dy = Math.min(ty - o.y, -20); // 항상 위쪽으로
       const len = Math.hypot(dx, dy);
-      const speed = WEB_SPEED * (this.ab.webSpeed || 1);
+      // 팀 공격 스타일마다 속도가 다르다 (빔 · 번개는 빠르고 바위는 느림)
+      const speed = WEB_SPEED * (this.ab.webSpeed || 1) * this.attackStyle.speed;
       this.webs.push({
         x: o.x, y: o.y, vx: (dx / len) * speed, vy: (dy / len) * speed, speed,
         target: this.droneNear(tx, ty), dead: false,
@@ -182,20 +183,22 @@
       this.shotSfx();
     }
 
-    /** 정답 드론 명중: 점수 · 콤보 적립, 거미줄에 감기는 연출, 영어는 발음 읽기. */
+    /** 정답 드론 명중: 점수 · 콤보 적립, (거미 팀은) 거미줄에 감기는 연출, 영어는 발음 읽기. */
     onCorrect(d) {
       d.done = true;
       const pts = this.awardCorrect(d.c.x, d.c.y);
 
-      const wg = this.add.graphics();
-      wg.lineStyle(2, this.shotColor, 0.95);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * Math.PI) / 4;
-        wg.lineBetween(0, 0, Math.cos(a) * (d.w / 2 + 6), Math.sin(a) * (d.h / 2 + 6));
+      if (this.attackStyle === A.ATTACKS.web) { // 거미줄일 때만 드론이 거미줄에 감긴다
+        const wg = this.add.graphics();
+        wg.lineStyle(2, this.shotColor, 0.95);
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          wg.lineBetween(0, 0, Math.cos(a) * (d.w / 2 + 6), Math.sin(a) * (d.h / 2 + 6));
+        }
+        wg.strokeCircle(0, 0, 14);
+        wg.strokeCircle(0, 0, 28);
+        d.c.add(wg);
       }
-      wg.strokeCircle(0, 0, 14);
-      wg.strokeCircle(0, 0, 28);
-      d.c.add(wg);
 
       this.popup(d.c.x, d.c.y - 50, `정답! +${pts}`, '#06d6a0');
       if (this.q.speak) A.speak(this.q.speak);
@@ -280,6 +283,7 @@
           if (d.done || d.decoy) continue;
           if (Math.abs(w.x - d.c.x) <= d.w / 2 + r && Math.abs(w.y - d.c.y) <= d.h / 2 + r) {
             w.dead = true;
+            this.attackHit(w.x, w.y); // 팀별 명중 연출
             if (d.isCorrect) this.onCorrect(d);
             else this.onWrong(d);
             break;
@@ -288,15 +292,11 @@
       }
       this.webs = this.webs.filter((w) => !w.dead);
 
+      // 투사체 그리기: 모양은 팀 공격 스타일이 정한다 (round-scene.drawAttack)
       const g = this.webGfx;
       g.clear();
       const o = this.hand();
-      for (const w of this.webs) {
-        g.lineStyle(2, this.shotColor, 0.85);
-        g.lineBetween(o.x, o.y, w.x, w.y);
-        g.fillStyle(this.shotColor, 1);
-        g.fillCircle(w.x, w.y, r > 14 ? 9 : 5);
-      }
+      for (const w of this.webs) this.drawAttack(g, o, w);
     }
   }
 

@@ -49,6 +49,7 @@
  * @property {string} trait    팀 공통 특징
  * @property {string} star     팀 스타 아이콘
  * @property {string} starName 팀 스타 이름
+ * @property {'web'|'laser'|'shield'|'bolt'|'rock'|'arrow'|'orb'|'claw'} attack 공격 스타일 (game/attacks.js 의 A.ATTACKS 키)
  * @property {'swing'|'fly'|'vault'|'bolt'|'leap'|'zip'|'teleport'|'pounce'} travel 빌딩 스윙 모드의 이동 방법
  * @property {string} travelName 이동 이름 (안내 문구)
  * @property {string} fail     빌딩 스윙에서 오답일 때 문구
@@ -73,26 +74,27 @@
 
   /**
    * @type {HeroFamily[]} 메뉴 도감에 보이는 순서
-   * travel: 빌딩 스윙 모드에서 정답 빌딩으로 건너가는 방법 (modes/swing-mode.js 의 TRAVELS 키)
+   * attack: 보기를 고를 때 날아가는 공격 모양 (game/attacks.js 의 ATTACKS 키 — 드론 잡기 · 철자 잇기 · 보스 배틀)
+   * travel: 빌딩 스윙 모드에서 정답 빌딩으로 건너가는 방법 (game/travels.js 의 TRAVELS 키)
    * travelName: 안내 문구에 쓰는 이동 이름 / fail: 오답 빌딩을 골랐을 때 문구
    */
   A.HERO_FAMILIES = [
     { id: 'spider', name: '거미 팀', shot: '거미줄', color: 0xffffff, trait: '여러 차원에서 온 거미 히어로', star: '🕸️', starName: '거미 스타',
-      travel: 'swing', travelName: '거미줄 스윙', fail: '앗! 줄이 끊어졌어요' },
+      attack: 'web', travel: 'swing', travelName: '거미줄 스윙', fail: '앗! 줄이 끊어졌어요' },
     { id: 'armor', name: '아머 팀', shot: '레이저 줄', color: 0x9be7ff, trait: '최첨단 아머, 스캐너로 가짜를 찾아내요', star: '⚙️', starName: '아머 스타',
-      travel: 'fly', travelName: '제트 비행', fail: '앗! 추진기가 멈췄어요' },
+      attack: 'laser', travel: 'fly', travelName: '제트 비행', fail: '앗! 추진기가 멈췄어요' },
     { id: 'shield', name: '방패 팀', shot: '방패 줄', color: 0x4cc9f0, trait: '별 방패로 하트를 지켜요', star: '🛡️', starName: '방패 스타',
-      travel: 'vault', travelName: '방패 공중제비', fail: '앗! 방패가 튕겨 나왔어요' },
+      attack: 'shield', travel: 'vault', travelName: '방패 공중제비', fail: '앗! 방패가 튕겨 나왔어요' },
     { id: 'thunder', name: '번개 팀', shot: '번개 줄', color: 0xffd166, trait: '망치를 든 번개의 기사, 아주 빨라요', star: '⚡', starName: '번개 스타',
-      travel: 'bolt', travelName: '번개 비행', fail: '앗! 번개가 빗나갔어요' },
+      attack: 'bolt', travel: 'bolt', travelName: '번개 비행', fail: '앗! 번개가 빗나갔어요' },
     { id: 'giant', name: '거인 팀', shot: '바위 줄', color: 0x80ed99, trait: '힘센 근육 거인, 큼직하게 잡아요', star: '💪', starName: '거인 스타',
-      travel: 'leap', travelName: '거인 점프', fail: '앗! 점프가 짧았어요' },
+      attack: 'rock', travel: 'leap', travelName: '거인 점프', fail: '앗! 점프가 짧았어요' },
     { id: 'archer', name: '궁수 팀', shot: '화살 줄', color: 0xc77dff, trait: '백발백중 궁수, 콤보 점수가 커요', star: '🎯', starName: '궁수 스타',
-      travel: 'zip', travelName: '화살 줄타기', fail: '앗! 화살이 빠졌어요' },
+      attack: 'arrow', travel: 'zip', travelName: '화살 줄타기', fail: '앗! 화살이 빠졌어요' },
     { id: 'mystic', name: '마법 팀', shot: '마법 줄', color: 0xff9f1c, trait: '마법으로 시간을 느리게 해요', star: '🔮', starName: '마법 스타',
-      travel: 'teleport', travelName: '순간이동', fail: '앗! 포털이 닫혔어요' },
+      attack: 'orb', travel: 'teleport', travelName: '순간이동', fail: '앗! 포털이 닫혔어요' },
     { id: 'panther', name: '표범 팀', shot: '발톱 줄', color: 0xb388ff, trait: '날렵한 왕의 전사, 빠르고 단단해요', star: '🐾', starName: '표범 스타',
-      travel: 'pounce', travelName: '표범 점프', fail: '앗! 발이 미끄러졌어요' },
+      attack: 'claw', travel: 'pounce', travelName: '표범 점프', fail: '앗! 발이 미끄러졌어요' },
   ];
 
   const SKIN = '#f1c27d';
