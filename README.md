@@ -38,4 +38,5 @@ ARAH/
 
 ## 문서
 
-전체 문서 목록은 [doc/README.md](doc/README.md)에 있습니다.
+* 전체 문서 목록: [doc/README.md](doc/README.md)
+* AI 에이전트 · 새 작업 세션용 안내(현재 상태, 규칙, 테스트 방법): [CLAUDE.md](CLAUDE.md)

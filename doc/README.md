@@ -1,5 +1,7 @@
 # 문서 목차
 
+> 새 세션 · 다른 에이전트는 먼저 루트의 [CLAUDE.md](../CLAUDE.md)(작업 안내 · 현재 상태 · 보안 규칙)를 읽습니다.
+
 | 분류 | 문서 | 내용 |
 |---|---|---|
 | 기획 | [planning/game-design.md](planning/game-design.md) | 게임 설계서(GDD): 콘셉트, 규칙, 히어로, 점수 |
