@@ -1,5 +1,5 @@
 /**
- * @file 단어별 원어민 발음 파일 목록. tools/audio/generate_word_audio.py 가 자동으로 다시 쓴다 (직접 고치지 않는다).
+ * @file 단어별 원어민 발음 파일 목록. 발음 생성 도구가 자동으로 다시 쓴다 (직접 고치지 않는다).
  * @layer data
  * @depends 없음
  * @see doc/decisions/ADR-0004-pronunciation.md, web/assets/audio/words/README.md
@@ -10,8 +10,49 @@
   'use strict';
 
   /** 발음 파일 출처 (라이선스 · 표기 확인용) */
-  A.WORD_AUDIO_SOURCE = '';
+  A.WORD_AUDIO_SOURCE = "Kokoro-82M (kokoro-js 1.2.0, voice af_heart, speed 0.9), Apache-2.0";
 
   /** @type {Object<string, string>} 영어 단어(소문자) → 파일 이름 */
-  A.WORD_AUDIO = {};
+  A.WORD_AUDIO = {
+    "apple": "apple.wav",
+    "banana": "banana.wav",
+    "grape": "grape.wav",
+    "orange": "orange.wav",
+    "strawberry": "strawberry.wav",
+    "lemon": "lemon.wav",
+    "peach": "peach.wav",
+    "watermelon": "watermelon.wav",
+    "dog": "dog.wav",
+    "cat": "cat.wav",
+    "lion": "lion.wav",
+    "tiger": "tiger.wav",
+    "rabbit": "rabbit.wav",
+    "bear": "bear.wav",
+    "pig": "pig.wav",
+    "cow": "cow.wav",
+    "monkey": "monkey.wav",
+    "fish": "fish.wav",
+    "bird": "bird.wav",
+    "spider": "spider.wav",
+    "frog": "frog.wav",
+    "sun": "sun.wav",
+    "moon": "moon.wav",
+    "star": "star.wav",
+    "tree": "tree.wav",
+    "flower": "flower.wav",
+    "rain": "rain.wav",
+    "snow": "snow.wav",
+    "car": "car.wav",
+    "bus": "bus.wav",
+    "book": "book.wav",
+    "ball": "ball.wav",
+    "cake": "cake.wav",
+    "milk": "milk.wav",
+    "egg": "egg.wav",
+    "house": "house.wav",
+    "hat": "hat.wav",
+    "bag": "bag.wav",
+    "pencil": "pencil.wav",
+    "clock": "clock.wav"
+  };
 })(window.ARAH);

@@ -6,6 +6,7 @@
 |---|---|---|
 | 기획 | [planning/game-design.md](planning/game-design.md) | 게임 설계서(GDD): 콘셉트, 규칙, 히어로, 점수 |
 | 기획 | [planning/roadmap.md](planning/roadmap.md) | MVP 범위와 이후 단계 |
+| 기획 | [planning/enhancement-review.md](planning/enhancement-review.md) | 고도화 검토: 학습 · 콘텐츠 · 재미 · 플랫폼 · 기술 품질, 추천 순서 |
 | 콘텐츠 | [content/curriculum.md](content/curriculum.md) | 학년별 수학 · 영어 출제 범위 |
 | 결정 | [decisions/ADR-0001-web-first.md](decisions/ADR-0001-web-first.md) | 웹 우선 개발 결정 |
 | 결정 | [decisions/ADR-0002-original-characters.md](decisions/ADR-0002-original-characters.md) | 오리지널 캐릭터 사용 결정 |

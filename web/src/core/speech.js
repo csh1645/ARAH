@@ -29,6 +29,8 @@
 
   let chosenVoice = null;
   const player = typeof Audio !== 'undefined' ? new Audio() : null;
+  /** 재생 요청 번호. 새 요청이 오면 이전 요청의 실패 처리(대체 음성)를 무시하기 위해 쓴다. */
+  let playSeq = 0;
 
   /** 음성 하나의 우선순위 점수. 높을수록 좋다. */
   function scoreVoice(v) {
@@ -87,6 +89,8 @@
   A.unlockAudio = function () {
     if (!player) return;
     try {
+      playSeq++; // 이전 단어의 실패 처리가 무음 재생 때문에 불리지 않게
+      player.onerror = null;
       player.src = SILENT_WAV;
       const p = player.play();
       if (p && p.catch) p.catch(() => {});
@@ -106,14 +110,21 @@
       speakTts(text);
       return;
     }
+    // 연속 재생 시 이전 play() 는 AbortError 로 끝난다. 그건 "실패"가 아니라 "취소"이므로
+    // 최신 요청이 아닐 때나 AbortError 일 때는 대체 음성을 내지 않는다 (소리 겹침 방지).
+    const seq = ++playSeq;
+    const fallback = (err) => {
+      if (seq !== playSeq || (err && err.name === 'AbortError')) return;
+      speakTts(text);
+    };
     try {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      player.onerror = () => speakTts(text);
+      player.onerror = () => fallback();
       player.src = AUDIO_DIR + file;
       const p = player.play();
-      if (p && p.catch) p.catch(() => speakTts(text));
+      if (p && p.catch) p.catch(fallback);
     } catch (e) {
-      speakTts(text);
+      fallback(e);
     }
   };
 

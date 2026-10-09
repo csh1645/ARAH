@@ -1,6 +1,16 @@
 # ADR-0004: 영어 발음 (미국 원어민 기준)
 
-* **상태:** 1단계 채택, 2단계 검토 중
+* **상태:** 채택 — **kokoro-js(Kokoro-82M, 음성 `af_heart`, 속도 0.9)로 만든 발음 파일 우선 재생** (2026-10-10 단어 40개 적용)
+
+## 최종 결정 요약
+
+* 발음 파일: `web/assets/audio/words/<단어>.wav` (24kHz 모노, 앞뒤 무음 제거 · 음량 정규화, 단어당 약 30KB)
+* 생성: `python tools/audio/collect_server.py` → `http://127.0.0.1:8124/tools/audio/kokoro-generate.html` → [생성 시작]. 이미 있는 파일은 건너뛰므로 **단어를 추가하면 새 단어만** 만든다
+* 라이선스: Kokoro-82M 가중치 Apache-2.0 (`audio-manifest.js`의 `WORD_AUDIO_SOURCE`에 기록)
+* 안드로이드 · iOS 에 TTS 설치를 안내할 필요 없음 (일반 오디오 파일 재생). 기기 음성은 파일이 없을 때만 대체
+* 다음 단계: GitHub Actions 자동 생성 + 문장 지원 ([고도화 검토](../planning/enhancement-review.md) 2절)
+
+## 진행 기록
 * **날짜:** 2026-10-10
 
 ## 배경

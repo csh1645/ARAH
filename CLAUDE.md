@@ -19,7 +19,8 @@
 | 히어로 6종 · 별 · 합류, 동적 연출, 폰 세로 안내 | ✅ |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
-| **원어민 발음 파일 40개** | ⏳ 재생 구조 완료. 유력안: **kokoro-js(Kokoro-82M, Apache 2.0, 음성 `af_heart`)로 브라우저에서 1회 생성 → wav 커밋**. 모델(q8 약 86MB) 다운로드에 사용자 승인 필요 ([ADR-0004](doc/decisions/ADR-0004-pronunciation.md)) |
+| 원어민 발음 파일 40개 | ✅ kokoro-js(Kokoro-82M, `af_heart`)로 생성 · 적용. 단어 추가 시 생성 절차: [web/assets/audio/words/README.md](web/assets/audio/words/README.md) |
+| 고도화 검토 | ✅ [doc/planning/enhancement-review.md](doc/planning/enhancement-review.md) — 다음 작업은 여기 "추천 진행 순서"를 따른다 |
 | 실제 아이 · 실제 기기 플레이 테스트 | ⏳ 미실시 |
 
 남은 일 전체 목록: [doc/planning/roadmap.md](doc/planning/roadmap.md)
@@ -65,7 +66,8 @@ web/src/
   * 하나의 javascript 실행은 45초 제한 → 긴 완주는 백그라운드 async 루프로 돌리고 나중에 결과를 조회
 * 브라우저 창이 가려지면(document.hidden) Phaser가 자동 일시정지한다 — 버그 아님
 * **테스트로 늘어난 별은 되돌린다:** `ARAH.storage.set('stars', 13)` (13은 사용자가 직접 모은 값)
-* 내장 브라우저에는 한국어 음성만 있어 영어 TTS 품질 확인 불가 → 발음 파일로 해결 예정
+* 내장 브라우저에는 한국어 음성만 있어 영어 TTS 품질 확인 불가 → 발음 파일로 해결함. 발음 재생 확인은 `HTMLMediaElement.prototype.play`를 감싸 재생된 파일 이름을 기록하는 방식으로 한다
+* 발음 파일 검증: `OfflineAudioContext.decodeAudioData`로 길이(0.25~2초) · RMS(0.03 이상)를 확인 (에이전트는 소리를 직접 들을 수 없음 → 최종 청취는 사용자에게 요청)
 
 ## 6. Git · 배포
 

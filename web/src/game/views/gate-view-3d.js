@@ -393,7 +393,9 @@
     crash(d, onFallen, onDone) {
       const { rand } = A.util;
       const p = d.v.group.position;
-      const geo = new THREE.TetrahedronGeometry(0.14);
+      // 조각 형상은 하나를 만들어 모든 조각이 공유하고, destroy 에서 한 번만 해제한다 (충돌마다 새로 만들면 누수)
+      if (!this.shardGeo) this.shardGeo = new THREE.TetrahedronGeometry(0.14);
+      const geo = this.shardGeo;
       for (let i = 0; i < 18; i++) {
         const mat = new THREE.MeshStandardMaterial({ color: 0x9be7ff, emissive: 0x2a7ab0, transparent: true, opacity: 0.9 });
         const mesh = new THREE.Mesh(geo, mat);
@@ -510,6 +512,7 @@
       if (this.destroyed) return;
       this.destroyed = true;
       disposeTree(this.scene3);
+      if (this.shardGeo) this.shardGeo.dispose();
       this.renderer.dispose();
       this.renderer.forceContextLoss();
       this.renderer.domElement.remove();

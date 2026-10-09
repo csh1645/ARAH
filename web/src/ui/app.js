@@ -122,9 +122,13 @@
       heroes.appendChild(card);
     }
 
+    // 불러오지 못한 모드(예: Three.js CDN 실패 시 3D)는 메뉴에서 숨긴다.
+    // Phaser 자체가 없으면 모든 모드가 미등록이므로 목록은 그대로 두고, 시작할 때 안내한다.
+    const available = typeof Phaser === 'undefined' ? A.MODES : A.MODES.filter((m) => A.GAME_MODES[m.id]);
+    if (!available.some((m) => m.id === state.mode)) state.mode = available[0].id;
     const modes = $('#modes');
     modes.replaceChildren(
-      ...A.MODES.map((m) =>
+      ...available.map((m) =>
         optionButton(`${m.icon} ${m.label}`, m.desc, m.id === state.mode, () => {
           state.mode = m.id;
           renderMenu();
@@ -151,8 +155,12 @@
   }
 
   function startRound() {
-    if (typeof Phaser === 'undefined' || !A.GAME_MODES[state.mode]) {
+    if (typeof Phaser === 'undefined') {
       alert('게임 엔진(Phaser)을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.');
+      return;
+    }
+    if (!A.GAME_MODES[state.mode]) {
+      alert('이 놀이 방법을 불러오지 못했어요. 다른 놀이 방법을 골라 주세요.');
       return;
     }
     // 이전 판이 남아 있으면 정리한다 (게임이 두 개 겹쳐 도는 것 방지)

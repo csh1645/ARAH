@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>발음 파일 생성기</title>
+  <!--
+    단어별 미국 원어민 발음 파일을 kokoro-js(Kokoro-82M, Apache 2.0)로 만드는 개발 도구. 배포되지 않는다(web/ 밖).
+    실행: python tools/audio/collect_server.py → 이 페이지 열기 → [생성 시작]
+    처음 한 번 Hugging Face 에서 모델(q8 약 86MB)을 내려받는다. 이후 브라우저 캐시를 쓴다.
+    관련 문서: doc/decisions/ADR-0004-pronunciation.md
+  -->
+  <style>
+    :root { --bg: #0b1026; --panel: #171c3d; --text: #f5f6ff; --muted: #aab0d6; --ok: #06d6a0; --bad: #ff5c5c; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font-family: "Malgun Gothic", sans-serif; }
+    main { max-width: 860px; margin: 0 auto; }
+    h1 { font-size: 24px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+    button, select { font: inherit; padding: 8px 14px; border-radius: 8px; border: none; }
+    button { background: #e63946; color: #fff; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    #log { white-space: pre-wrap; background: var(--panel); padding: 12px; border-radius: 8px; font-size: 13px; max-height: 220px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    td, th { padding: 6px 8px; border-bottom: 1px solid #2a2f63; text-align: left; font-size: 14px; }
+    .ok { color: var(--ok); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>🔊 단어 발음 파일 생성기 (kokoro-js)</h1>
+  <p class="muted">web/src/data/words.js 의 단어를 미국 영어 음성으로 만들어 web/assets/audio/words/ 에 저장합니다.</p>
+  <div class="row">
+    <label>음성 <select id="voice">
+      <option value="af_heart" selected>af_heart (미국 여성, 등급 A)</option>
+      <option value="af_bella">af_bella (미국 여성, 등급 A-)</option>
+      <option value="am_michael">am_michael (미국 남성, C+)</option>
+    </select></label>
+    <label>속도 <select id="speed">
+      <option value="0.85">0.85 (천천히)</option>
+      <option value="0.9" selected>0.9 (저학년 권장)</option>
+      <option value="1">1.0 (보통)</option>
+    </select></label>
+    <label><input id="skip" type="checkbox" checked> 이미 있는 파일은 건너뛰기 (새 단어만 생성)</label>
+    <button id="start" type="button">생성 시작</button>
+  </div>
+  <div id="log">대기 중</div>
+  <table><thead><tr><th>단어</th><th>길이</th><th>크기</th><th>상태</th><th>듣기</th></tr></thead><tbody id="rows"></tbody></table>
+</main>
+
+<script type="module">
+  const KOKORO_URL = 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
+  const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+  const SILENCE = 0.01; // 앞뒤 무음으로 볼 진폭
+  const PAD_SEC = 0.06; // 잘라낸 뒤 남겨 둘 여유
+  const PEAK = 0.9; // 음량 정규화 목표
+
+  const $ = (s) => document.querySelector(s);
+  const log = (msg) => { $('#log').textContent += `\n${msg}`; $('#log').scrollTop = 1e9; };
+  window.genResult = { done: false, ok: [], failed: [] }; // 자동화 · 점검용 상태
+
+  /** words.js 에서 en 값을 읽는다 (게임과 같은 원본을 쓰기 위해). */
+  async function readWords() {
+    const text = await (await fetch('/web/src/data/words.js')).text();
+    return [...text.matchAll(/en:\s*'([a-z]+)'/g)].map((m) => m[1]);
+  }
+
+  /** 앞뒤 무음을 자르고 음량을 맞춘다. */
+  function tidy(samples, rate) {
+    let s = 0;
+    let e = samples.length - 1;
+    while (s < e && Math.abs(samples[s]) < SILENCE) s++;
+    while (e > s && Math.abs(samples[e]) < SILENCE) e--;
+    const pad = Math.round(PAD_SEC * rate);
+    const out = samples.slice(Math.max(0, s - pad), Math.min(samples.length, e + pad));
+    let peak = 0;
+    for (const v of out) peak = Math.max(peak, Math.abs(v));
+    const gain = peak > 0 ? PEAK / peak : 1;
+    for (let i = 0; i < out.length; i++) out[i] *= gain;
+    return out;
+  }
+
+  /** Float32 샘플을 16비트 모노 WAV 로 만든다. */
+  function toWav(samples, rate) {
+    const buf = new ArrayBuffer(44 + samples.length * 2);
+    const v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); str(8, 'WAVE');
+    str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, 'data'); v.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) {
+      const x = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+    }
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  async function run() {
+    $('#start').disabled = true;
+    $('#rows').innerHTML = '';
+    const voice = $('#voice').value;
+    const speed = Number($('#speed').value);
+    const words = await readWords();
+    log(`단어 ${words.length}개, 음성 ${voice}, 속도 ${speed}`);
+
+    // 이미 파일이 있는 단어는 건너뛴다 → 단어를 추가했을 때 새 단어만 만들면 된다
+    const files = {};
+    const todo = [];
+    for (const word of words) {
+      const exists = $('#skip').checked && (await fetch(`/web/assets/audio/words/${word}.wav`, { method: 'HEAD' })).ok;
+      if (exists) files[word] = `${word}.wav`;
+      else todo.push(word);
+    }
+    log(`기존 파일 ${Object.keys(files).length}개 유지, 새로 만들 단어 ${todo.length}개`);
+    if (todo.length === 0) {
+      await saveManifest(files, voice, speed);
+      window.genResult.done = true;
+      $('#start').disabled = false;
+      return;
+    }
+
+    log('kokoro-js 불러오는 중…');
+    const { KokoroTTS } = await import(KOKORO_URL);
+    log('모델 내려받는 중 (처음 한 번, 약 86MB)…');
+    const t0 = performance.now();
+    const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'wasm' });
+    log(`모델 준비 완료 (${((performance.now() - t0) / 1000).toFixed(1)}초)`);
+
+    for (const word of todo) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td><td></td><td class="muted">생성 중…</td><td></td>';
+      tr.cells[0].textContent = word;
+      $('#rows').appendChild(tr);
+      try {
+        // 마침표를 붙이면 단어 하나도 자연스럽게 끝이 내려가는 억양으로 읽는다
+        const audio = await tts.generate(`${word}.`, { voice, speed });
+        const samples = tidy(audio.audio, audio.sampling_rate);
+        const wav = toWav(samples, audio.sampling_rate);
+        const res = await fetch(`/save?name=${word}.wav`, { method: 'POST', body: wav });
+        if (!res.ok) throw new Error(`저장 실패 HTTP ${res.status}`);
+        files[word] = `${word}.wav`;
+        const sec = samples.length / audio.sampling_rate;
+        tr.cells[1].textContent = `${sec.toFixed(2)}초`;
+        tr.cells[2].textContent = `${Math.round(wav.size / 1024)}KB`;
+        tr.cells[3].textContent = '저장됨';
+        tr.cells[3].className = 'ok';
+        const play = document.createElement('button');
+        play.type = 'button';
+        play.textContent = '▶';
+        play.onclick = () => new Audio(`/web/assets/audio/words/${word}.wav?t=${Date.now()}`).play();
+        tr.cells[4].appendChild(play);
+        window.genResult.ok.push({ word, sec: +sec.toFixed(2), kb: Math.round(wav.size / 1024) });
+      } catch (err) {
+        tr.cells[3].textContent = String(err.message || err);
+        tr.cells[3].className = 'bad';
+        window.genResult.failed.push({ word, error: String(err.message || err) });
+      }
+    }
+
+    await saveManifest(files, voice, speed);
+    window.genResult.done = true;
+    $('#start').disabled = false;
+  }
+
+  /** 게임이 읽는 발음 목록(web/src/data/audio-manifest.js)을 갱신한다. */
+  async function saveManifest(files, voice, speed) {
+    const res = await fetch('/manifest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, source: `Kokoro-82M (kokoro-js 1.2.0, voice ${voice}, speed ${speed}), Apache-2.0` }),
+    });
+    log(res.ok ? `완료: 목록 ${Object.keys(files).length}개 갱신` : `목록 갱신 실패 HTTP ${res.status}`);
+  }
+
+  $('#start').addEventListener('click', () => run().catch((e) => {
+    log(`오류: ${e.message || e}`);
+    window.genResult.done = true;
+    window.genResult.error = String(e.message || e);
+    $('#start').disabled = false;
+  }));
+</script>
+</body>
+</html>
