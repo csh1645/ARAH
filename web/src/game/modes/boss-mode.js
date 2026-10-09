@@ -145,12 +145,9 @@
       const bw = Math.min(200, (W - 60 - (n - 1) * 16) / n);
       const x0 = W / 2 - ((n - 1) * (bw + 16)) / 2;
       this.buttons = q.choices.map((label, i) => this.makeButton(label, label === q.answer, x0 + i * (bw + 16), bw, i, !!q.pictureChoices));
-      if (this.ab.hint) {
-        const wrong = this.buttons.filter((b) => !b.isCorrect);
-        this.disableButton(A.util.pick(wrong));
-      }
-      const sec = CHARGE_SEC_BY_LEVEL[this.opts.level] / (this.ab.slow || 1) + (this.ab.timeBonus || 0);
-      this.chargeMs = sec * 1000;
+      const decoy = this.decoyIndex(q); // buttons[i] 는 q.choices[i] 와 같은 순서
+      if (decoy >= 0) this.disableButton(this.buttons[decoy]);
+      this.chargeMs = this.timeLimitMs(CHARGE_SEC_BY_LEVEL[this.opts.level]);
       this.charge = 0;
       this.busy = false;
     }

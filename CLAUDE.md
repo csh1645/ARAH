@@ -5,8 +5,8 @@
 
 ## 1. 프로젝트 한눈에
 
-* **무엇:** 초등 2학년(2027년 3학년) 아이 한 명을 위한 수학 사칙연산 · 영어 단어 학습 액션 웹게임
-* **테마:** 아이가 좋아하는 스파이더맨 · 어벤저스 느낌의 **히어로 연합(8팀 25명 수집)**. 사용자 결정으로 원조를 떠올리게 하는 오마주 디자인을 쓰되 **공식 이름 · 로고 · 공식 이미지 파일은 절대 쓰지 않는다** ([ADR-0002](doc/decisions/ADR-0002-original-characters.md))
+* **무엇:** "히어로 대작전" — 초등 저학년 아이 한 명을 위한 수학 사칙연산 · 영어(단어 · 철자 · 듣기) 학습 액션 웹게임. 1~6단계 (화면에 학년 표시 없음)
+* **테마:** 스파이더맨 · 어벤저스 느낌의 **히어로 연합 8팀 × 6명 = 48명**, 팀 스타로 한 명씩 합류. 원조를 떠올리게 하는 오마주 디자인이되 **공식 이름 · 로고 · 공식 이미지 파일은 절대 쓰지 않는다** ([ADR-0002](doc/decisions/ADR-0002-original-characters.md))
 * **스택:** 순수 HTML/JS, 빌드 도구 없음. Phaser 3.80.1(2D) + Three.js r149(3D, 문 통과 3D 모드) — 둘 다 CDN, 버전 고정
 * **배포:** GitHub `csh1645/ARAH` `main` → Vercel 자동 배포, **Root Directory = `web`** ([deploy-vercel.md](doc/guides/deploy-vercel.md))
 * **사용자 선호:** 한국어 응답, 결론 먼저. 문서는 `doc/` 아래 Markdown으로 관리, 개발 표준 · 주석을 중시, **변경 후 에이전트가 직접 브라우저로 끝까지 플레이 테스트하고 결과를 보고**하길 원함
@@ -15,9 +15,14 @@
 
 | 항목 | 상태 |
 |---|---|
-| 놀이 방법 5종 (드론 잡기 · 빌딩 스윙 · 문 통과 · 3D 문 통과 · 철자 잇기) | ✅ 완성, 모두 10문제 완주 테스트 통과 |
-| 히어로 연합 8팀 25명 · 도감 | ✅ 사용자 요청으로 **원조 느낌의 오마주 디자인** (공식 이름 · 로고 금지, 가족 범위 공유) — [ADR-0002](doc/decisions/ADR-0002-original-characters.md) 개정 |
-| 히어로 6종 · 별 · 합류, 동적 연출, 폰 세로 안내 | ✅ |
+| 놀이 6종 (드론 잡기 · 빌딩 스윙 · 문 통과(3D 자동) · 철자 잇기 · 짝꿍 찾기 · 보스 배틀) — 서로 겹치지 않게 | ✅ 모두 완주 테스트 통과 |
+| 빌딩 스윙: 팀별 건너가기 8종 (`game/travels.js`) | ✅ |
+| 히어로 48명 · 팀 스타 · 한 번에 한 명 합류 · 기존 진행 이전 | ✅ (예전 별 → 거미 스타, `ui/app.js` LEGACY_UNLOCKS) |
+| 1~6단계 수학 · 영어 123단어 · 듣기 문제 | ✅ |
+| 오답 복습 노트 (간격 반복, `questions/review.js`) | ✅ |
+| 새 단어 83개 발음 파일 | ⏳ 아직 40개만 있음 (나머지는 기기 음성으로 대체) — kokoro 생성기로 증분 생성 필요 |
+| 효과음 · 배경음 (팀별 발사음 등) | ⏳ 사용자 요청, 다음 작업 (Web Audio 합성 예정) |
+| 동적 연출, 폰 세로 안내 | ✅ |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
 | 원어민 발음 파일 40개 | ✅ kokoro-js(Kokoro-82M, `af_heart`)로 생성 · 적용. 단어 추가 시 생성 절차: [web/assets/audio/words/README.md](web/assets/audio/words/README.md) |
@@ -32,10 +37,10 @@
 
 ```
 web/src/
-├─ core/       util · storage · speech          (의존 없음)
-├─ data/       curriculum · heroes · words · audio-manifest   (값만, 로직 없음)
-├─ questions/  math · english · index           (엔진 독립: Phaser/DOM 금지)
-├─ game/       round-scene(공통 규칙) · modes/(모드 규칙) · views/(2D·3D 화면) · hero-art · launcher
+├─ core/       util(랜덤 · bezier2) · storage · speech   (의존 없음)
+├─ data/       curriculum(단계 · 규칙 · 놀이 목록) · heroes(팀 · 48명) · words · audio-manifest   (값만, 로직 없음)
+├─ questions/  math · english · index · review(복습 노트)   (엔진 독립: Phaser/DOM 금지)
+├─ game/       round-scene(공통 규칙 · 능력 계산) · travels(팀별 이동) · modes/(놀이 6종) · views/(문 통과 2D·3D) · hero-art · launcher
 └─ ui/         app.js (메뉴 · 결과 · 모바일 처리)
 ```
 
@@ -44,7 +49,10 @@ web/src/
 * **주석:** 모든 JS 파일 머리에 `@file @layer @depends @see`, 공개 API(`A.*`)에는 JSDoc, 공유 객체는 `@typedef`
 * **게임 수치는 `data/curriculum.js`의 `A.RULES`에만** 둔다
 * **새 모드:** `RoundScene` 상속 + 훅(`createWorld/startWave/clearWave`, 선택 `questionOptions`) + `A.GAME_MODES[id]` 등록 + `A.MODES` 메뉴 항목 ([ADR-0003](doc/decisions/ADR-0003-game-mode-architecture.md))
-* **3D:** 규칙(`modes/gate-mode.js`)과 화면(`views/gate-view-2d.js`, `gate-view-3d.js`) 분리. 3D 장면은 `static transparent = true`로 Phaser 캔버스를 투명하게 해 HUD만 겹친다 ([ADR-0005](doc/decisions/ADR-0005-threejs-3d.md))
+* **3D:** 규칙(`modes/gate-mode.js`)과 화면(`views/gate-view-2d.js`, `gate-view-3d.js`) 분리. WebGL 이 되면 3D 자동 (`GateScene.use3D()`), 3D 일 때 `transparent` 로 Phaser 캔버스를 투명하게 해 HUD만 겹친다 ([ADR-0005](doc/decisions/ADR-0005-threejs-3d.md))
+* **히어로 능력 공식은 기반에만:** 제한 시간 `timeLimitMs()`, 가짜 보기 `decoyIndex()` (모드에 복사하지 않는다)
+* **한 화면에 여러 문제(짝꿍 찾기):** `awardCorrect(x, y, q)`, `penalize(loseHeart, q)`, `recordReview(q)` 로 문제를 지정한다
+* **새 팀:** `heroes.js` 의 HERO_FAMILIES(shot · star · travel · fail) + 히어로 6명 + `hero-art.js` 체형 + `travels.js` 이동
 * **코드와 문서를 함께 바꾼다:** 규칙 → `game-design.md`, 출제 범위 → `curriculum.md`, 중요한 결정 → 새 ADR, 테스트 → `doc/qa/`
 
 ## 4. 보안 (위반 금지)

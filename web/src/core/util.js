@@ -39,5 +39,18 @@ window.ARAH = window.ARAH || {};
     return arr;
   };
 
-  A.util = { rand, pick, shuffle };
+  /**
+   * 2차 베지어 곡선 위의 점 (시작 S → 조절점 C 쪽으로 휘어 → 끝 E). 점프 · 스윙 · 비행 경로에 쓴다.
+   * @param {{x: number, y: number}} S
+   * @param {{x: number, y: number}} C 조절점 (경로가 이 점 쪽으로 휜다)
+   * @param {{x: number, y: number}} E
+   * @param {number} t 0 ~ 1
+   * @returns {{x: number, y: number}}
+   */
+  const bezier2 = (S, C, E, t) => {
+    const u = 1 - t;
+    return { x: u * u * S.x + 2 * u * t * C.x + t * t * E.x, y: u * u * S.y + 2 * u * t * C.y + t * t * E.y };
+  };
+
+  A.util = { rand, pick, shuffle, bezier2 };
 })(window.ARAH);

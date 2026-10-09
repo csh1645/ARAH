@@ -307,6 +307,30 @@
       this.time.delayedCall(delay, () => this.nextQuestion());
     }
 
+    // ---------- 히어로 능력 공통 계산 (모드마다 같은 공식을 쓰도록 한곳에 둔다) ----------
+
+    /**
+     * 히어로 능력(slow: 느리게, timeBonus: 추가 시간)을 반영한 제한 시간.
+     * 빌딩 스윙 제한 시간 · 문 도착 시간 · 보스 공격 충전 시간에 쓴다.
+     * @param {number} baseSec 단계별 기본 시간 (초)
+     * @returns {number} ms
+     */
+    timeLimitMs(baseSec) {
+      return (baseSec / (this.ab.slow || 1) + (this.ab.timeBonus || 0)) * 1000;
+    }
+
+    /**
+     * 힌트 능력(탐정 · 아머 스캐너 등)이 있으면 미리 막아 둘 오답 보기 번호. 능력이 없으면 -1.
+     * 반환값은 q.choices 의 번호이며, 모드는 같은 순서로 보기(드론 · 빌딩 · 문 · 버튼)를 만든다.
+     * @param {Question} q
+     * @returns {number}
+     */
+    decoyIndex(q) {
+      if (!this.ab.hint) return -1;
+      const wrong = q.choices.map((_, i) => i).filter((i) => q.choices[i] !== q.answer);
+      return wrong.length ? A.util.pick(wrong) : -1;
+    }
+
     /**
      * 끝난 문제 하나를 복습 노트에 반영하고 결과 화면 집계를 올린다.
      * endWave 가 this.q 에 대해 부르며, 한 화면에 여러 문제를 내는 모드(짝꿍 찾기)는 나머지 문제에 직접 부른다.

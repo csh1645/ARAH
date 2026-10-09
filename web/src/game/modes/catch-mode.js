@@ -82,8 +82,7 @@
       const n = q.choices.length;
       const gap = (W - DRONE_MARGIN_X * 2) / (n - 1);
       const xs = A.util.shuffle(q.choices.map((_, i) => DRONE_MARGIN_X + i * gap));
-      const wrongIdx = q.choices.map((_, i) => i).filter((i) => q.choices[i] !== q.answer);
-      const decoyIdx = this.ab.hint ? A.util.pick(wrongIdx) : -1;
+      const decoyIdx = this.decoyIndex(q);
 
       this.drones = q.choices.map((label, i) =>
         this.makeDrone(label, label === q.answer, xs[i], i === decoyIdx, i * 120));

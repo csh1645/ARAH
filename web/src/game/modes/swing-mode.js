@@ -1,11 +1,12 @@
 /**
- * @file 🏙️ 빌딩 스윙 모드. 옥상 간판에 보기가 적힌 빌딩들 중 정답 빌딩을 골라 거미줄 스윙으로 건너간다.
+ * @file 🏙️ 빌딩 스윙 모드. 옥상 간판에 보기가 적힌 빌딩들 중 정답 빌딩을 골라 건너간다.
+ *       건너가는 방법은 히어로 팀마다 다르다 (거미줄 스윙 · 제트 비행 · 거인 점프 · 순간이동 …, game/travels.js).
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.TRAVELS, A.findFamily
  * @see doc/planning/game-design.md (3.2 빌딩 스윙)
  *
  * 판정: 정답 빌딩 선택 → 스윙해서 착지, 다음 문제
- *       오답 빌딩 선택 → 거미줄이 끊어져 제자리로 떨어짐, 하트 -1, 같은 문제 계속
+ *       오답 빌딩 선택 → 건너가다 실패해 제자리로 떨어짐(문구는 팀마다 다름), 하트 -1, 같은 문제 계속
  *       제한 시간 초과 → 하트 -1, 정답을 알려 주고 그 빌딩으로 자동 스윙
  *
  * 드론 잡기보다 조준 부담이 없고(빌딩을 누르기만 하면 됨) 대신 시간 제한이 있다.
@@ -34,8 +35,8 @@
   const BUILDING_COLORS = [0x23284f, 0x2d2350, 0x1f3350, 0x332a4f];
 
   // ----- 연출 시간 ms -----
-  const SWING_MS = 850; // 섀도 스파이더는 webSpeed 배율만큼 빨라진다
-  const SWING_DIP = 130; // 스윙할 때 아래로 처지는 깊이 px
+  // 건너가는 이동 연출(시간 · 경로)은 팀마다 다르며 game/travels.js 에 있다
+  const ZIGZAG_STEPS = 9; // 번개 자국을 그릴 마디 수
   const SCROLL_MS = 600; // 착지 후 화면이 다음 구간으로 넘어가는 시간
   const NEXT_DELAY = 1000;
 
@@ -45,7 +46,7 @@
     }
 
     introText() {
-      return `${this.hero.name} 출동!\n정답 빌딩으로 ${this.shotName} 스윙!`;
+      return `${this.hero.name} 출동!\n정답 빌딩으로 ${A.findFamily(this.hero).travelName}!`;
     }
 
     createWorld() {
@@ -53,8 +54,8 @@
       this.selected = 0;
       this.keyboardUsed = false; // 키보드를 쓰기 전에는 선택 테두리를 숨긴다 (정답 힌트로 오해하지 않게)
       this.swinging = false;
-      this.anchor = null; // 거미줄이 걸린 지점. 값이 있는 동안 손에서 이 지점까지 줄을 그린다
-      this.webColor = this.shotColor;
+      /** @type {TravelLine|null} 값이 있는 동안 매 프레임 그리는 줄 (거미줄 · 화살 줄 · 번개 자국 등) */
+      this.line = null;
       this.landed = null;
 
       this.drawSky();
@@ -136,8 +137,7 @@
       const n = q.choices.length;
       const slot = (TARGET_RIGHT - TARGET_LEFT) / n;
       const w = Math.min(140, slot - 24);
-      const wrongIdx = q.choices.map((_, i) => i).filter((i) => q.choices[i] !== q.answer);
-      const decoyIdx = this.ab.hint ? A.util.pick(wrongIdx) : -1;
+      const decoyIdx = this.decoyIndex(q);
 
       // q.choices 는 이미 섞여 있으므로 그 순서대로 왼쪽부터 놓는다
       this.targets = q.choices.map((label, i) => {
@@ -157,7 +157,7 @@
       this.selected = this.targets.findIndex((b) => !b.used);
       this.updateHighlight();
       const base = A.RULES.swingTimeByLevel[this.opts.level];
-      this.timeLimit = (base / (this.ab.slow || 1) + (this.ab.timeBonus || 0)) * 1000;
+      this.timeLimit = this.timeLimitMs(base);
       this.timeLeft = this.timeLimit;
       this.swinging = false;
     }
@@ -165,7 +165,7 @@
     /** 착지한 빌딩을 왼쪽 시작 위치로 옮기고 나머지는 화면 밖으로 흘려보낸다. */
     clearWave() {
       this.timerGfx.clear();
-      this.anchor = null;
+      this.line = null;
       const landed = this.landed;
       this.landed = null;
       const dx = landed ? START_X - landed.c.x : 0;
@@ -222,33 +222,25 @@
     }
 
     /**
-     * 빌딩 b 의 안테나에 거미줄을 걸고 2차 베지어 곡선(시작 → 아래로 처진 중간점 → 도착)을 따라 날아간다.
+     * 빌딩 b 로 건너간다. 방법은 히어로 팀에 따라 다르다 (거미줄 스윙 · 제트 비행 · 순간이동 …, game/travels.js).
      * @param {boolean} earned 점수를 줄지 여부 (시간 초과로 자동 이동할 때는 false)
      */
     swingTo(b, earned) {
       this.swinging = true;
-      this.webColor = this.shotColor;
-      this.anchor = { x: b.c.x, y: b.anchorY };
       this.player.setFlipX(false);
-
-      const S = { x: this.player.x, y: this.player.y };
-      const E = { x: b.c.x, y: b.roofY - HERO_FOOT };
-      const C = { x: (S.x + E.x) / 2, y: Math.max(S.y, E.y) + SWING_DIP };
-      const p = { t: 0 };
-      let frame = 0;
-      this.tweens.add({
-        targets: p, t: 1, duration: SWING_MS / (this.ab.webSpeed || 1), ease: 'Sine.InOut',
-        onUpdate: () => {
-          const t = p.t;
-          const u = 1 - t;
-          this.player.x = u * u * S.x + 2 * u * t * C.x + t * t * E.x;
-          this.player.y = u * u * S.y + 2 * u * t * C.y + t * t * E.y;
-          this.player.angle = -25 + 50 * t;
-          if (frame++ % 3 === 0) this.ghostTrail(); // 3프레임마다 잔상
-        },
-        onComplete: () => {
-          this.anchor = null;
-          this.player.angle = 0;
+      const family = A.findFamily(this.hero);
+      const travel = A.TRAVELS[family.travel] || A.TRAVELS.swing;
+      travel({
+        scene: this,
+        from: { x: this.player.x, y: this.player.y },
+        to: { x: b.c.x, y: b.roofY - HERO_FOOT },
+        anchor: { x: b.c.x, y: b.anchorY },
+        color: this.shotColor,
+        setLine: (line) => { this.line = line; },
+        done: () => {
+          // 이동 연출이 바꾼 모양을 원래대로 되돌린다
+          this.line = null;
+          this.player.setAngle(0).setScale(1).setAlpha(1);
           this.land(b, earned);
         },
       });
@@ -266,22 +258,21 @@
       this.endWave(NEXT_DELAY);
     }
 
-    /** 오답: 줄을 걸었다가 끊어져서 제자리로 떨어진다. 같은 문제는 계속된다. */
+    /** 오답: 건너가려다 실패해서 제자리로 떨어진다 (문구는 팀마다 다름). 같은 문제는 계속된다. */
     failSwing(b) {
       this.swinging = true;
       b.used = true;
       b.text.setColor('#ff5c5c');
       b.c.setAlpha(0.4);
       this.penalize();
-      this.webColor = this.shotColor;
-      this.anchor = { x: b.c.x, y: b.anchorY };
+      this.line = { to: { x: b.c.x, y: b.anchorY }, color: this.shotColor };
 
       const y0 = this.player.y;
       this.tweens.add({
         targets: this.player, y: y0 - 50, duration: 220, yoyo: true, ease: 'Quad.Out',
         onYoyo: () => {
-          this.anchor = null; // 줄이 끊어짐
-          this.popup(b.c.x, b.roofY - 120, '앗! 줄이 끊어졌어요', '#ff5c5c');
+          this.line = null; // 줄이 끊어짐
+          this.popup(b.c.x, b.roofY - 120, A.findFamily(this.hero).fail, '#ff5c5c');
         },
         onComplete: () => {
           this.swinging = false;
@@ -331,15 +322,33 @@
         tg.fillRect(0, TIMER_Y, W * frac, TIMER_H);
       }
 
+      this.drawLine();
+    }
+
+    /** 이동 연출이 지정한 줄(this.line)을 그린다. 번개는 매 프레임 모양이 바뀌는 지그재그로. */
+    drawLine() {
       const g = this.webGfx;
       g.clear();
-      if (this.anchor) {
-        const o = this.hand();
-        g.lineStyle(3, this.webColor, 0.95);
-        g.lineBetween(o.x, o.y, this.anchor.x, this.anchor.y);
-        g.fillStyle(0xffffff, 1);
-        g.fillCircle(this.anchor.x, this.anchor.y, 5);
+      const line = this.line;
+      if (!line) return;
+      const o = line.from || this.hand();
+      const to = line.to;
+      g.lineStyle(line.zigzag ? 4 : 3, line.color, 0.95);
+      if (line.zigzag) {
+        const steps = ZIGZAG_STEPS;
+        g.beginPath();
+        g.moveTo(o.x, o.y);
+        for (let i = 1; i < steps; i++) {
+          const t = i / steps;
+          g.lineTo(o.x + (to.x - o.x) * t + A.util.rand(-10, 10), o.y + (to.y - o.y) * t + A.util.rand(-10, 10));
+        }
+        g.lineTo(to.x, to.y);
+        g.strokePath();
+        return;
       }
+      g.lineBetween(o.x, o.y, to.x, to.y);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(to.x, to.y, 5);
     }
   }
 

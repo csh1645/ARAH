@@ -119,10 +119,11 @@
     startWave(q) {
       this.doors = q.choices.map((label, i) => ({ lane: i, label, isCorrect: label === q.answer, used: false }));
       this.view.createDoors(this.doors, !!q.pictureChoices);
-      if (this.ab.hint) this.blockDoor(A.util.pick(this.doors.filter((d) => !d.isCorrect)));
+      const decoy = this.decoyIndex(q); // doors[i] 는 q.choices[i] 와 같은 순서
+      if (decoy >= 0) this.blockDoor(this.doors[decoy]);
 
       const base = A.RULES.gateTimeByLevel[this.opts.level];
-      this.approachMs = (base / (this.ab.slow || 1) + (this.ab.timeBonus || 0)) * 1000;
+      this.approachMs = this.timeLimitMs(base);
       this.p = 0;
       this.dash = false;
       this.ensureOpenLane();

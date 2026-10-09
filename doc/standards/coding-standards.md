@@ -17,7 +17,8 @@ web/src/
 ├─ game/        Phaser 게임 (위 모든 계층 사용 가능)
 │  ├─ hero-art.js     캐릭터 그리기
 │  ├─ round-scene.js  모든 모드 공통 규칙 (기반 장면)
-│  ├─ modes/          놀이 방법별 장면: 규칙 · 판정 (catch, swing, gate, gate3d, spell)
+│  ├─ travels.js      팀별 건너가기 연출 (빌딩 스윙에서 사용)
+│  ├─ modes/          놀이 방법별 장면: 규칙 · 판정 (catch, swing, gate, spell, match, boss)
 │  ├─ views/          모드의 화면 그리기 (gate-view-2d.js: Phaser, gate-view-3d.js: Three.js)
 │  └─ launcher.js     게임 시작 진입점 (A.startGame)
 └─ ui/          DOM 메뉴 · 결과 화면                      → 위 모든 계층 사용 가능
@@ -138,6 +139,8 @@ A.makeQuestion = function (subject, level) { ... };
 * `const`를 기본으로 쓰고, 값이 바뀔 때만 `let`을 씁니다. `var`는 쓰지 않습니다
 * 들여쓰기는 공백 2칸, 문자열은 작은따옴표, 문장 끝 세미콜론을 씁니다
 * 게임 수치(속도, 하트 수, 문제 수)는 코드에 직접 쓰지 않고 `data/curriculum.js`의 `A.RULES`에 둡니다
+* **같은 공식 · 로직을 두 곳 이상에 쓰지 않습니다.** 여러 모드가 쓰는 계산은 `RoundScene`(예: `timeLimitMs`, `decoyIndex`)이나 `core/util.js`(예: `bezier2`)로 올리고, 팀별로 달라지는 동작은 표(예: `A.TRAVELS`)로 분리합니다
+* **기능을 추가할 때마다 리팩토링 · 주석 · 문서 갱신을 함께 합니다** (사용자 기본 요구 사항)
 * 화면 문구(UI 텍스트)는 아이가 읽기 쉬운 짧은 해요체로 씁니다
 
 ---
