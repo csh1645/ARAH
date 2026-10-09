@@ -8,6 +8,7 @@
  *
  * 좌표계: 모든 도형은 64 x 72 기준 좌표로 그리고, drawHero 에서 실제 크기로 확대한다.
  * 새 머리 모양을 추가하려면 head() 에 style 분기를 추가하고 HeroLook typedef 도 갱신한다.
+ * 자세(애니메이션 프레임)는 POSES 표 하나로 정한다: 팀 체형은 손 위치(P.hand · P.off)와 legPair 만 쓰면 모든 자세를 지원한다.
  * TODO(phase2): 그래픽 리소스가 생기면 이 파일을 스프라이트 시트 로딩으로 교체한다.
  */
 (function (A) {
@@ -211,22 +212,111 @@
     ctx.stroke();
   }
 
+  // ---------- 자세 (pose) ----------
+  // 그림 한 장으로는 단조롭다 → 팔 각도 · 다리 각도 · 몸 기울기만 바꾼 여러 장(프레임)을 만들어 상황마다 바꿔 끼운다.
+  // 팀 체형 코드는 손 위치(P.hand, P.off)와 다리 함수(legPair)만 쓰면 모든 자세를 자동으로 지원한다.
+
+  /** 기본 체형의 어깨 (오른쪽 = 줄을 쏘는 팔) */
+  const SHOULDER = { r: [44, 38], l: [20, 38] };
+  const ARM_LEN = 15;
+  /** 기본 자세의 오른손 위치. 장비(망치 · 활 · 마법진 · 발톱)는 여기 기준으로 그린 뒤 손을 따라 옮긴다 */
+  const HAND0 = [54, 27];
+
   /**
-   * 기본 체형: 다리 · 부츠 · 팔(오른팔을 든 자세) · 장갑 · 몸통 · 허리.
+   * 자세 표. 각도는 라디안(화면 좌표, 아래가 +), r/l = 오른팔/왼팔, legs = [왼다리, 오른다리] 기울기,
+   * tuck = 다리 접힘(1 = 쭉 폄), lean = 몸 기울기(+ 앞으로), face = 머리 옆 표정 효과.
+   * @typedef {{r: number, l: number, len?: number, legs: number[], tuck?: number, lean?: number, face?: string}} PoseDef
+   * @type {Object<string, PoseDef>}
+   */
+  const POSES = {
+    idle: { r: -0.83, l: 2.21, legs: [0, 0] }, // 오른팔을 든 기본 자세
+    breath: { r: -0.72, l: 2.12, legs: [0, 0] }, // 숨쉬기 (idle 과 번갈아)
+    run1: { r: -0.25, l: 2.75, legs: [-0.55, 0.5], lean: 0.08 },
+    run2: { r: 0.85, l: 1.55, legs: [0.5, -0.55], lean: 0.08 },
+    attack: { r: -0.22, l: 2.75, len: 16.5, legs: [-0.2, 0.3], lean: 0.12 }, // 팔을 쭉 뻗어 쏘기 · 때리기
+    jump: { r: -1.25, l: -1.9, legs: [-0.75, 0.45], tuck: 0.72 }, // 두 팔 위로, 다리 접기
+    hurt: { r: -1.95, l: -1.2, legs: [0.25, -0.1], lean: -0.16, face: 'hurt' }, // 팔로 얼굴 가리며 움찔
+    win: { r: -1.05, l: -2.1, legs: [-0.28, 0.28], face: 'happy' }, // 만세 V 자세
+  };
+  /** 게임이 만드는 프레임 목록 (round-scene.js 가 텍스처로 미리 만든다) */
+  A.HERO_POSES = Object.keys(POSES);
+
+  /** 어깨 s 에서 각도 a 로 뻗은 손 위치 */
+  function reach(s, a, len) {
+    return [s[0] + Math.cos(a) * len, s[1] + Math.sin(a) * len];
+  }
+
+  /** 자세 정의 → 그리기용 값 (손 위치, 장비 이동량 등) */
+  function resolvePose(name) {
+    const d = POSES[name] || POSES.idle;
+    const hand = reach(SHOULDER.r, d.r, d.len || ARM_LEN);
+    return {
+      ...d,
+      name,
+      hand,
+      off: reach(SHOULDER.l, d.l, d.len || ARM_LEN),
+      shift: [hand[0] - HAND0[0], hand[1] - HAND0[1]], // 장비를 손 따라 옮길 양
+    };
+  }
+
+  /**
+   * 엉덩이에서 기울어진 다리 한 쌍 (다리 + 부츠). 서 있을 때 원래 그림과 같은 모양이다.
+   * @param {number[]} hips 왼쪽 · 오른쪽 엉덩이 x
+   * @param {{y: number, w: number, len: number, bootW: number, bootH: number}} m 치수
+   */
+  function legPair(ctx, P, legColor, bootColor, hips, m) {
+    hips.forEach((hx, i) => {
+      ctx.save();
+      ctx.translate(hx, m.y);
+      ctx.rotate(P.legs[i]);
+      ctx.scale(1, P.tuck || 1);
+      ctx.fillStyle = legColor;
+      roundRect(ctx, -m.w / 2, 0, m.w, m.len, 3);
+      ctx.fillStyle = bootColor;
+      roundRect(ctx, -m.bootW / 2, m.len - 4, m.bootW, m.bootH, 3);
+      ctx.restore();
+    });
+  }
+  const LEGS = { y: 52, w: 8, len: 15, bootW: 11, bootH: 7 };
+
+  /** 손에 든 장비를 기본 자세 기준 좌표로 그리고 손 위치로 옮긴다 */
+  function atHand(ctx, P, draw) {
+    ctx.save();
+    ctx.translate(P.shift[0], P.shift[1]);
+    draw();
+    ctx.restore();
+  }
+
+  /** 머리 옆 표정 효과: 아플 때 땀방울 · 어지러운 별, 이겼을 때 반짝이 (모든 팀 공통) */
+  function faceFx(ctx, P) {
+    if (P.face === 'hurt') {
+      ctx.fillStyle = '#8fd3ff';
+      ctx.beginPath();
+      ctx.moveTo(48, 4);
+      ctx.quadraticCurveTo(52, 10, 48, 12);
+      ctx.quadraticCurveTo(44, 10, 48, 4);
+      ctx.fill();
+      star(ctx, 14, 6, 3.4, '#ffd166');
+      star(ctx, 20, 2.8, 2.4, '#ffd166');
+    } else if (P.face === 'happy') {
+      star(ctx, 8, 8, 3.6, '#ffd166');
+      star(ctx, 57, 5, 3.2, '#fff3b0');
+      star(ctx, 4, 20, 2.2, '#fff3b0');
+    }
+  }
+
+  /**
+   * 기본 체형: 다리 · 부츠 · 팔 · 장갑 · 몸통 · 허리. 팔다리는 자세(P)를 따른다.
+   * @param {Object} P 자세 (resolvePose)
    * @param {Object} [c] 부위별 색 덮어쓰기 { legs, boots, arms, gloves, torso, belt }
    */
-  function baseBody(ctx, look, c = {}) {
-    ctx.fillStyle = c.legs || look.accent;
-    roundRect(ctx, 22, 52, 8, 15, 3);
-    roundRect(ctx, 34, 52, 8, 15, 3);
-    ctx.fillStyle = c.boots || look.suit;
-    roundRect(ctx, 20, 63, 11, 7, 3);
-    roundRect(ctx, 33, 63, 11, 7, 3);
+  function baseBody(ctx, look, P, c = {}) {
+    legPair(ctx, P, c.legs || look.accent, c.boots || look.suit, [26, 38], LEGS);
     const arms = c.arms || look.suit;
-    limb(ctx, arms, 20, 38, 11, 50);
-    limb(ctx, arms, 44, 38, 54, 27);
-    circle(ctx, 11, 50, 3.8, c.gloves || arms);
-    circle(ctx, 54, 27, 3.8, c.gloves || arms);
+    limb(ctx, arms, SHOULDER.l[0], SHOULDER.l[1], P.off[0], P.off[1]);
+    limb(ctx, arms, SHOULDER.r[0], SHOULDER.r[1], P.hand[0], P.hand[1]);
+    circle(ctx, P.off[0], P.off[1], 3.8, c.gloves || arms);
+    circle(ctx, P.hand[0], P.hand[1], 3.8, c.gloves || arms);
     ctx.fillStyle = c.torso || look.suit;
     roundRect(ctx, 19, 33, 26, 23, 8);
     gloss(ctx, 25, 38, 4, 2.5);
@@ -235,27 +325,25 @@
   }
 
   // ---------- 팀별 체형 ----------
-  // 모두 64 x 72 기준 좌표, 오른손 (54, 27) 위치를 지킨다 (게임의 HAND_OFFSET 과 맞춤).
+  // 모두 64 x 72 기준 좌표. 팔다리는 자세(P)를 따르고, 손에 든 장비는 기본 자세 손 (54, 27) 기준으로 그려 atHand 로 옮긴다.
   // 원조 히어로를 떠올리게 하는 대표 색 · 장비 · 실루엣을 쓰되, 로고 · 글자 마크는 그리지 않는다 (ADR-0002).
 
   /** 거미 팀 */
-  function drawSpider(ctx, look, back) {
-    baseBody(ctx, look);
+  function drawSpider(ctx, look, back, P) {
+    baseBody(ctx, look, P);
     emblem(ctx, look.emblem); // 앞뒤 모두 거미 문양 (등에도 있는 디자인)
     head(ctx, look, back);
     gloss(ctx, 27, 13, 4, 2.5);
   }
 
   /** 아머 팀: 금색 얼굴판 헬멧, 빛나는 가슴 코어, 손바닥 빔 */
-  function drawArmor(ctx, look, back) {
+  function drawArmor(ctx, look, back, P) {
     const { suit, accent, emblem: glow } = look;
-    baseBody(ctx, look, { legs: suit, boots: suit, belt: shade(suit, -0.12), gloves: suit });
+    baseBody(ctx, look, P, { legs: suit, boots: suit, belt: shade(suit, -0.12), gloves: suit });
     ctx.fillStyle = accent; // 금색 판: 정강이 · 복부
-    roundRect(ctx, 23, 55, 6, 7, 2);
-    roundRect(ctx, 35, 55, 6, 7, 2);
-    roundRect(ctx, 24, 44, 16, 4, 2);
-    circle(ctx, 14, 45, 2.4, accent); // 팔뚝 판
-    circle(ctx, 50, 32, 2.4, accent);
+    roundRect(ctx, 24, 44, 16, 4, 2); // 복부 판 (정강이 판은 다리를 따라 움직이도록 생략)
+    circle(ctx, (SHOULDER.l[0] + P.off[0] * 1.5) / 2.5, (SHOULDER.l[1] + P.off[1] * 1.5) / 2.5, 2.4, accent); // 팔뚝 판
+    circle(ctx, (SHOULDER.r[0] + P.hand[0] * 1.5) / 2.5, (SHOULDER.r[1] + P.hand[1] * 1.5) / 2.5, 2.4, accent);
     for (const x of [19, 45]) {
       circle(ctx, x, 35, 4.6, suit); // 어깨 보호대
       gloss(ctx, x - 1, 33.5, 2, 1.2);
@@ -272,10 +360,10 @@
       circle(ctx, 32, 39, 2, '#ffffff');
     }
     ctx.save(); // 손바닥 빔
-    ctx.globalAlpha = 0.45;
-    circle(ctx, 54, 27, 6, glow);
+    ctx.globalAlpha = P.name === 'attack' ? 0.75 : 0.45; // 쏠 때 더 밝게
+    circle(ctx, P.hand[0], P.hand[1], P.name === 'attack' ? 8 : 6, glow);
     ctx.restore();
-    circle(ctx, 54, 27, 2.4, '#ffffff');
+    circle(ctx, P.hand[0], P.hand[1], 2.4, '#ffffff');
     ctx.fillStyle = suit; // 헬멧
     roundRect(ctx, 21, 6, 22, 27, 10);
     gloss(ctx, 27, 12, 4, 2.5);
@@ -292,9 +380,9 @@
   }
 
   /** 방패 팀: 파란 슈트, 가슴 별, 빨강 · 흰 줄무늬 배, 날개 헬멧, 줄무늬 둥근 방패 */
-  function drawShield(ctx, look, back) {
+  function drawShield(ctx, look, back, P) {
     const skin = look.skin || SKIN;
-    baseBody(ctx, look, { legs: look.suit, boots: look.accent, gloves: look.accent });
+    baseBody(ctx, look, P, { legs: look.suit, boots: look.accent, gloves: look.accent });
     for (let i = 0; i < 5; i++) { // 배 줄무늬
       ctx.fillStyle = i % 2 ? look.line : look.accent;
       ctx.fillRect(21 + i * 4.4, 44, 4.4, 9);
@@ -316,7 +404,7 @@
       faceEyes(ctx, 20);
     }
     gloss(ctx, 27, 13, 4, 2.5);
-    const [sx, sy, sr] = back ? [32, 43, 12.5] : [11, 48, 11.5]; // 방패: 앞=왼팔, 뒤=등
+    const [sx, sy, sr] = back ? [32, 43, 12.5] : [P.off[0], P.off[1] - 2, 11.5]; // 방패: 앞=왼손, 뒤=등
     circle(ctx, sx, sy, sr, look.accent);
     circle(ctx, sx, sy, sr * 0.78, look.line);
     circle(ctx, sx, sy, sr * 0.57, look.accent);
@@ -326,7 +414,7 @@
   }
 
   /** 번개 팀: 빨간 망토, 은빛 원판 갑옷, 맨팔, 금발, 망치 */
-  function drawThunder(ctx, look, back) {
+  function drawThunder(ctx, look, back, P) {
     const skin = look.skin || SKIN;
     const hair = look.hair || '#f4d35e';
     const cape = [[19, 33], [45, 33], [53, 69], [11, 69]];
@@ -335,7 +423,7 @@
       ctx.fillStyle = hair; // 어깨까지 오는 머리 (뒤쪽)
       roundRect(ctx, 20, 11, 24, 23, 9);
     }
-    baseBody(ctx, look, { legs: look.suit, boots: '#5d4037', arms: skin, gloves: look.suit, belt: shade(look.suit, -0.1) });
+    baseBody(ctx, look, P, { legs: look.suit, boots: '#5d4037', arms: skin, gloves: look.suit, belt: shade(look.suit, -0.1) });
     for (const [x, y] of [[27, 37], [32, 37], [37, 37], [27, 42], [32, 42], [37, 42]]) circle(ctx, x, y, 1.9, look.line); // 원판 장식
     if (back) {
       poly(ctx, look.accent, cape); // 뒷모습: 망토가 몸을 덮는다
@@ -348,30 +436,30 @@
       faceEyes(ctx, 21);
       gloss(ctx, 28, 15, 3, 2);
     }
-    ctx.fillStyle = '#8d6e63'; // 망치 손잡이
-    roundRect(ctx, 52.8, 17, 2.6, 13, 1);
-    ctx.fillStyle = look.line; // 망치 머리
-    roundRect(ctx, 46.5, 9.5, 15, 8.5, 2);
-    gloss(ctx, 50, 11.5, 3, 1.4);
-    poly(ctx, look.emblem, [[59, 4], [56, 9], [58, 9], [55, 14], [61, 7], [59, 7], [61, 4]]); // 번개 불꽃
+    atHand(ctx, P, () => {
+      ctx.fillStyle = '#8d6e63'; // 망치 손잡이
+      roundRect(ctx, 52.8, 17, 2.6, 13, 1);
+      ctx.fillStyle = look.line; // 망치 머리
+      roundRect(ctx, 46.5, 9.5, 15, 8.5, 2);
+      gloss(ctx, 50, 11.5, 3, 1.4);
+      poly(ctx, look.emblem, [[59, 4], [56, 9], [58, 9], [55, 14], [61, 7], [59, 7], [61, 4]]); // 번개 불꽃
+    });
   }
 
   /** 거인 팀: 근육질 거대한 몸, 찢어진 반바지, 화난 눈썹 */
-  function drawGiant(ctx, look, back) {
+  function drawGiant(ctx, look, back, P) {
     const s = look.suit;
     const hair = look.hair || '#1a1a1a';
-    ctx.fillStyle = s; // 다리 · 발 (맨발)
-    roundRect(ctx, 18, 54, 12, 12, 5);
-    roundRect(ctx, 34, 54, 12, 12, 5);
-    roundRect(ctx, 16, 63, 15, 8, 3);
-    roundRect(ctx, 33, 63, 15, 8, 3);
+    legPair(ctx, P, s, s, [24, 40], { y: 54, w: 12, len: 12, bootW: 15, bootH: 8 }); // 굵은 다리 · 맨발
     ctx.fillStyle = look.accent; // 찢어진 반바지
     roundRect(ctx, 16, 47, 32, 10, 4);
     poly(ctx, look.accent, [[16, 56], [20, 61], [23, 56], [27, 60], [30, 56], [34, 60], [37, 56], [41, 61], [44, 56], [48, 56]]);
-    line(ctx, s, 11, [[17, 36], [9, 50]]); // 굵은 팔
-    line(ctx, s, 11, [[47, 36], [55, 26]]);
-    circle(ctx, 9, 51, 6, s); // 큰 주먹
-    circle(ctx, 55, 25, 6, s);
+    const fistL = [P.off[0] - 2, P.off[1] + 1]; // 거인은 어깨가 넓어 손이 조금 더 바깥
+    const fistR = [P.hand[0] + 1, P.hand[1] - 2];
+    line(ctx, s, 11, [[17, 36], fistL]); // 굵은 팔
+    line(ctx, s, 11, [[47, 36], fistR]);
+    circle(ctx, fistL[0], fistL[1], 6, s); // 큰 주먹
+    circle(ctx, fistR[0], fistR[1], P.name === 'attack' ? 7.5 : 6, s); // 때릴 때 주먹이 커 보이게
     ctx.fillStyle = s;
     roundRect(ctx, 13, 27, 38, 23, 11);
     gloss(ctx, 21, 33, 5, 3);
@@ -405,9 +493,9 @@
   }
 
   /** 궁수 팀: 보라 · 검정 슈트, V 무늬, 고글, 활과 화살통 */
-  function drawArcher(ctx, look, back) {
+  function drawArcher(ctx, look, back, P) {
     const skin = look.skin || SKIN;
-    baseBody(ctx, look, { legs: look.accent, boots: look.accent, gloves: look.accent });
+    baseBody(ctx, look, P, { legs: look.accent, boots: look.accent, gloves: look.accent });
     if (back) {
       ctx.fillStyle = '#5d4037';
       roundRect(ctx, 35, 27, 8, 22, 3); // 화살통
@@ -425,20 +513,22 @@
       roundRect(ctx, 23, 17, 18, 4.5, 2);
       gloss(ctx, 27, 18, 2.5, 1);
     }
-    ctx.strokeStyle = look.line; // 든 손의 활
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(55, 27, 11, -1.3, 1.3);
-    ctx.stroke();
-    line(ctx, look.line, 0.8, [[55 + Math.cos(-1.3) * 11, 27 + Math.sin(-1.3) * 11], [55 + Math.cos(1.3) * 11, 27 + Math.sin(1.3) * 11]]);
+    atHand(ctx, P, () => {
+      ctx.strokeStyle = look.line; // 든 손의 활
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(55, 27, 11, -1.3, 1.3);
+      ctx.stroke();
+      line(ctx, look.line, 0.8, [[55 + Math.cos(-1.3) * 11, 27 + Math.sin(-1.3) * 11], [55 + Math.cos(1.3) * 11, 27 + Math.sin(1.3) * 11]]);
+    });
   }
 
   /** 마법 팀: 파란 로브, 빨간 망토와 높은 깃, 목걸이 부적, 손에 마법진 */
-  function drawMystic(ctx, look, back) {
+  function drawMystic(ctx, look, back, P) {
     const skin = look.skin || SKIN;
     const cape = [[18, 32], [46, 32], [53, 69], [11, 69]];
     if (!back) poly(ctx, look.accent, cape);
-    baseBody(ctx, look, { legs: look.suit, boots: '#3e2723', gloves: '#ffd54f', belt: '#6d4c41' });
+    baseBody(ctx, look, P, { legs: look.suit, boots: '#3e2723', gloves: '#ffd54f', belt: '#6d4c41' });
     poly(ctx, look.suit, [[19, 50], [45, 50], [48, 65], [16, 65]]); // 로브 자락
     line(ctx, '#6d4c41', 1.6, [[21, 34], [43, 50]]); // 띠
     if (back) poly(ctx, look.accent, cape);
@@ -457,6 +547,7 @@
       roundRect(ctx, 31, 26, 2, 3, 1);
     }
     ctx.save(); // 손의 마법진
+    ctx.translate(P.shift[0], P.shift[1]);
     ctx.strokeStyle = look.line;
     ctx.shadowColor = look.line;
     ctx.shadowBlur = 4;
@@ -477,8 +568,8 @@
   }
 
   /** 표범 팀: 검은 슈트, 고양이 귀 마스크, 은빛 목걸이 무늬, 발톱 */
-  function drawPanther(ctx, look, back) {
-    baseBody(ctx, look, { legs: look.suit, boots: look.suit, gloves: look.suit, belt: look.accent });
+  function drawPanther(ctx, look, back, P) {
+    baseBody(ctx, look, P, { legs: look.suit, boots: look.suit, gloves: look.suit, belt: look.accent });
     for (let i = 0; i < 3; i++) line(ctx, look.line, 1.2, [[22 + i, 34 + i * 2.6], [32, 40 + i * 2.6], [42 - i, 34 + i * 2.6]]); // 목걸이 무늬
     line(ctx, look.emblem, 0.9, [[20, 44], [20, 54]]);
     line(ctx, look.emblem, 0.9, [[44, 44], [44, 54]]);
@@ -496,7 +587,9 @@
     } else {
       line(ctx, look.line, 0.9, [[32, 8], [32, 30]]);
     }
-    for (const dx of [-2, 0, 2]) line(ctx, '#e0e0e0', 0.9, [[54 + dx, 23], [55 + dx, 19]]); // 발톱
+    atHand(ctx, P, () => {
+      for (const dx of [-2, 0, 2]) line(ctx, '#e0e0e0', P.name === 'attack' ? 1.4 : 0.9, [[54 + dx, 23], [55 + dx, 19]]); // 발톱 (할퀼 때 굵게)
+    });
   }
 
   /** style → 그리기 함수. 새 팀을 추가하면 여기에 등록하고 HeroLook typedef 도 갱신한다. */
@@ -510,15 +603,35 @@
     panther: drawPanther,
   };
 
+  /** 몸 기울기(lean) 중심: 발 밑 */
+  const LEAN_PIVOT = [32, 70];
+
   /**
-   * 히어로 한 명을 캔버스에 그린다. 오른팔을 들어 줄을 쏘는 자세다.
-   * 오른손 위치는 기준 좌표 (54, 27) 이며, round-scene.js 의 HAND_OFFSET 이 이 값에 맞춰져 있다.
+   * 자세별 오른손(줄 · 공격이 나가는 곳) 위치를 그림 중심 기준 비율로 돌려준다.
+   * round-scene.js 의 hand() 가 히어로 크기를 곱해 실제 위치를 구한다 (몸 기울기까지 반영).
+   * @param {string} [pose='idle']
+   * @returns {{x: number, y: number}} 그림 가로 · 세로 크기에 대한 비율 (-0.5 ~ 0.5)
+   */
+  A.heroHand = function (pose) {
+    const P = resolvePose(pose);
+    const a = P.lean || 0;
+    const dx = P.hand[0] - LEAN_PIVOT[0];
+    const dy = P.hand[1] - LEAN_PIVOT[1];
+    const x = LEAN_PIVOT[0] + dx * Math.cos(a) - dy * Math.sin(a);
+    const y = LEAN_PIVOT[1] + dx * Math.sin(a) + dy * Math.cos(a);
+    return { x: x / 64 - 0.5, y: y / 72 - 0.5 };
+  };
+
+  /**
+   * 히어로 한 명을 캔버스에 그린다. 기본(idle)은 오른팔을 들어 줄을 쏘는 자세다.
+   * 자세(pose)를 주면 팔다리 · 몸 기울기 · 표정 효과가 바뀐다 (POSES 표). 손 위치는 A.heroHand(pose).
    * 만화처럼 보이도록 실루엣을 8방향으로 살짝 밀어 그린 뒤 그 위에 본 그림을 얹어 외곽선을 만든다.
    * @param {CanvasRenderingContext2D} ctx
    * @param {Hero} hero
    * @param {number} w 캔버스 너비 (px)
    * @param {number} h 캔버스 높이 (px)
-   * @param {{back?: boolean}} [opts] back: 뒷모습 (3D 3인칭 시점처럼 카메라가 히어로 뒤에 있을 때)
+   * @param {{back?: boolean, pose?: string}} [opts] back: 뒷모습 (3D 3인칭 시점처럼 카메라가 히어로 뒤에 있을 때),
+   *        pose: 자세 이름 (A.HERO_POSES, 기본 'idle')
    */
   A.drawHero = function (ctx, hero, w, h, opts = {}) {
     const look = hero.look;
@@ -528,7 +641,14 @@
     const a = art.getContext('2d');
     a.save();
     a.scale(w / 64, h / 72);
-    (BODIES[look.style] || drawSpider)(a, look, !!opts.back);
+    const P = resolvePose(opts.pose || 'idle');
+    if (P.lean) { // 발 밑을 중심으로 몸을 기울인다
+      a.translate(LEAN_PIVOT[0], LEAN_PIVOT[1]);
+      a.rotate(P.lean);
+      a.translate(-LEAN_PIVOT[0], -LEAN_PIVOT[1]);
+    }
+    (BODIES[look.style] || drawSpider)(a, look, !!opts.back, P);
+    faceFx(a, P);
     a.restore();
 
     // 외곽선용 실루엣 (그림 모양 그대로 어두운 색으로 채움)

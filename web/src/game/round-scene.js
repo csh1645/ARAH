@@ -3,7 +3,7 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.findFamily
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -17,6 +17,9 @@
  *   awardCorrect()  정답 처리 (점수 · 콤보) → 얻은 점수 반환
  *   penalize()      오답 · 놓침 처리 (하트 -1, 복습 목록 추가, 콤보 초기화)
  *   endWave(delay)  현재 문제를 끝내고 delay ms 뒤 다음 문제
+ *   heroShoot()     투사체 발사 동작 (공격 자세 · 반동 · 발사음)
+ *   meleeTo()       근접 팀(거인 · 표범)이 목표까지 뛰어올라 때리고 돌아오는 동작
+ *   setHeroBase() / setHeroPose()  히어로 애니메이션 (서기 · 달리기 · 점프 · 공격 · 아야 · 만세)
  *
  * 게임 좌표는 960 x 640 고정이며, Phaser Scale.FIT 이 실제 화면 크기에 맞춰 늘리고 줄인다.
  */
@@ -52,7 +55,6 @@
     FONT: '"Jua", "Malgun Gothic", sans-serif',
     DEPTH: { bg: 0, world: 10, web: 20, hero: 30, popup: 40, hud: 50 },
     HERO_SIZE: { w: 96, h: 108 },
-    HAND_OFFSET: { x: 31, y: -14 }, // 히어로 중심 기준 오른손 위치 (hero-art.js 의 팔 끝)
   };
   A.GAME = GAME;
   const { W, H, FONT, DEPTH } = GAME;
@@ -67,6 +69,22 @@
   const BURST_COLORS = [0xffd166, 0x06d6a0, 0x4cc9f0, 0xff4fa3, 0xffffff];
   const COMBO_MILESTONES = [3, 5, 7, 10]; // 이 콤보에 도달하면 큰 배너를 띄운다
   const SKY_DEPTH = -2; // 하늘 (가장 뒤)
+
+  // ----- 히어로 애니메이션 -----
+  // 바탕 동작(base)은 계속 반복되는 프레임 순서, 잠깐 자세(pose)는 정해진 시간 동안 바탕 위에 덮어쓴다.
+  // 프레임 그림은 hero-art.js 의 POSES 표 (A.HERO_POSES) 로 판마다 미리 만든다.
+  /** @type {Object<string, (t: number) => string>} 바탕 동작 → 시간 t(ms) 에 보여 줄 프레임 */
+  const HERO_BASES = {
+    idle: (t) => (Math.floor(t / 520) % 2 ? 'breath' : 'idle'), // 숨쉬기
+    run: (t) => (Math.floor(t / 110) % 2 ? 'run1' : 'run2'), // 팔다리 번갈아
+    jump: () => 'jump',
+    win: (t) => (Math.floor(t / 260) % 2 ? 'win' : 'jump'), // 승리 춤: 만세 ↔ 웅크리기
+    hurt: () => 'hurt',
+  };
+  const POSE_MS = { attack: 260, win: 650, hurt: 520 };
+  const MELEE_GO_MS = 340; // 근접 공격: 목표까지 뛰어가는 시간 (히어로 속도 능력으로 나눈다)
+  const MELEE_BACK_MS = 300; // 근접 공격: 돌아오는 시간
+  const MELEE_DEFAULT_ARC = 120;
   const AMBIENT_DEPTH = -1; // 별 반짝임 · 구름 · 서치라이트 (하늘 앞, 도시 뒤)
 
   class RoundScene extends Phaser.Scene {
@@ -214,6 +232,7 @@
       this.updateHud();
       this.sfx('correct');
       if (x !== undefined) this.celebrate(x, y);
+      if (!this.inMelee) this.setHeroPose('win'); // 만세! (근접 공격 중에는 때리는 자세를 유지)
       return pts;
     }
 
@@ -233,6 +252,7 @@
       this.updateHud();
       this.flashScreen(0xff3355, loseHeart ? 0.22 : 0.12);
       this.sfx(loseHeart ? 'hurt' : 'wrong');
+      this.setHeroPose('hurt'); // 아야! 움찔 (땀방울 · 어지러운 별)
       if (!loseHeart) return;
       this.tweens.add({ targets: this.heartText, x: { from: 12, to: 24 }, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.heartText.setX(18) });
     }
@@ -296,7 +316,7 @@
     ghostTrail() {
       const p = this.player;
       const ghost = this.add
-        .image(p.x, p.y, 'hero')
+        .image(p.x, p.y, p.texture.key) // 지금 자세 그대로
         .setAngle(p.angle)
         .setFlipX(p.flipX)
         .setScale(p.scaleX, p.scaleY)
@@ -406,6 +426,7 @@
       const msg = this.finishMessage(perfect);
       A.Sfx.music.stop();
       this.sfx(this.hearts <= 0 ? 'lose' : 'win');
+      this.heroFinale(this.hearts > 0);
       this.qText.setText('');
       this.hintText.setText('');
       const t = this.add
@@ -511,21 +532,157 @@
       }
     }
 
-    /** 선택한 히어로를 캔버스 텍스처로 그려 이미지로 만든다. */
-    createHero(x, y) {
+    // ---------- 히어로 (그림 · 애니메이션 · 공격 동작) ----------
+
+    /**
+     * 선택한 히어로를 자세별 캔버스 텍스처(hero-idle, hero-run1 …)로 그려 이미지로 만들고 애니메이션을 시작한다.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} [scale=1] 모드별 크기 (보스 배틀은 크게, 짝꿍 찾기는 작게). 반동 연출의 기준이 된다
+     */
+    createHero(x, y, scale = 1) {
       const { w, h } = GAME.HERO_SIZE;
-      const tex = this.textures.createCanvas('hero', w, h);
-      A.drawHero(tex.getContext(), this.hero, w, h);
-      tex.refresh();
-      this.player = this.add.image(x, y, 'hero').setDepth(DEPTH.hero);
+      for (const pose of A.HERO_POSES) {
+        const key = `hero-${pose}`;
+        if (this.textures.exists(key)) this.textures.remove(key); // 다시 하기: 다른 히어로일 수 있다
+        const tex = this.textures.createCanvas(key, w, h);
+        A.drawHero(tex.getContext(), this.hero, w, h, { pose });
+        tex.refresh();
+      }
+      this.heroScale = scale;
+      this.heroAnim = { base: 'idle', pose: null, until: 0 };
+      this.inMelee = false;
+      this.player = this.add.image(x, y, 'hero-idle').setDepth(DEPTH.hero).setScale(scale);
+      this.events.on('update', this.tickHeroAnim, this);
       return this.player;
     }
 
-    /** 줄(거미줄 · 레이저 줄 등)이 나가는 손 위치. 히어로가 왼쪽을 보면 좌우가 바뀐다. */
+    /** 매 프레임: 지금 보여 줄 자세 프레임으로 텍스처를 바꾼다. */
+    tickHeroAnim(time) {
+      const p = this.player;
+      if (!p || !p.active) return;
+      const a = this.heroAnim;
+      if (a.pose && time >= a.until) a.pose = null;
+      const key = `hero-${a.pose || HERO_BASES[a.base](time)}`;
+      if (p.texture.key !== key) p.setTexture(key);
+    }
+
+    /**
+     * 계속 반복할 바탕 동작을 정한다.
+     * @param {'idle'|'run'|'jump'|'win'|'hurt'} base
+     */
+    setHeroBase(base) {
+      if (this.heroAnim) this.heroAnim.base = base;
+    }
+
+    /**
+     * 잠깐 자세를 취한다 (시간이 지나면 바탕 동작으로 돌아감).
+     * @param {'attack'|'win'|'hurt'|'jump'} pose
+     * @param {number} [ms] 기본: POSE_MS 표
+     */
+    setHeroPose(pose, ms = POSE_MS[pose] || 400) {
+      if (!this.heroAnim || this.ended) return;
+      this.heroAnim.pose = pose;
+      this.heroAnim.until = this.time.now + ms;
+      this.tickHeroAnim(this.time.now);
+    }
+
+    /** 제자리에서 둥실둥실 (서 있는 모드 공통). 근접 공격 · 끝 연출 때 멈췄다가 다시 시작한다. */
+    startHeroBob(amp = 4) {
+      this.stopHeroBob();
+      this.bobTween = this.tweens.add({ targets: this.player, y: this.player.y - amp, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    }
+
+    stopHeroBob() {
+      if (this.bobTween) this.bobTween.stop();
+      this.bobTween = null;
+    }
+
+    /** 투사체 발사 동작: 팔을 쭉 뻗는 공격 자세 + 반동 + 팀 발사음. 투사체 이동은 모드가 맡는다. */
+    heroShoot() {
+      const k = this.heroScale;
+      this.setHeroPose('attack');
+      this.tweens.add({ targets: this.player, scaleX: k * 1.08, scaleY: k * 0.9, duration: 60, yoyo: true, onComplete: () => this.player.setScale(k) });
+      this.shotSfx();
+    }
+
+    /**
+     * 근접 공격 (거인 내려찍기 · 표범 달려들기): 목표까지 포물선으로 뛰어올라 때리고 착지한다.
+     * 점프 높이는 팀 공격 스타일의 melee.arc. 목표가 움직이면(떨어지는 드론) 함수로 넘겨 매 프레임 따라간다.
+     * @param {{x: number, y: number}|(() => {x: number, y: number})} target 때릴 위치 (히어로 중심이 갈 곳)
+     * @param {() => void} onImpact 때리는 순간
+     * @param {{land?: {x: number, y: number}, onLand?: () => void}} [opts] land: 착지할 곳 (기본: 출발한 곳)
+     */
+    meleeTo(target, onImpact, opts = {}) {
+      const p = this.player;
+      const at = typeof target === 'function' ? target : () => target;
+      const arc = (this.attackStyle.melee || {}).arc || MELEE_DEFAULT_ARC;
+      const speed = this.ab.webSpeed || 1;
+      this.stopHeroBob();
+      if (this.meleeTween) this.meleeTween.stop(); // 돌아오는 중에 다시 공격하면 그 자리에서 새로 출발
+      this.inMelee = true;
+      this.setHeroBase('jump');
+      this.shotSfx();
+      const S = { x: p.x, y: p.y };
+      p.setFlipX(at().x < S.x - 10);
+
+      const prog = { t: 0 };
+      let frame = 0;
+      const fly = (from, getTo, lift, ms, done) => {
+        prog.t = 0;
+        this.meleeTween = this.tweens.add({
+          targets: prog, t: 1, duration: ms, ease: 'Sine.InOut',
+          onUpdate: () => {
+            const T = getTo();
+            const C = { x: (from.x + T.x) / 2, y: Math.min(from.y, T.y) - lift };
+            const pt = A.util.bezier2(from, C, T, prog.t);
+            p.setPosition(pt.x, pt.y);
+            if (frame++ % 3 === 0) this.ghostTrail(); // 빠르게 뛰는 잔상
+          },
+          onComplete: done,
+        });
+      };
+
+      fly(S, at, arc, MELEE_GO_MS / speed, () => {
+        this.setHeroPose('attack');
+        const dir = p.flipX ? -1 : 1;
+        this.tweens.add({ targets: p, angle: dir * 22, duration: 70, yoyo: true }); // 내려찍기 · 할퀴기 동작
+        onImpact();
+        const L = opts.land || S;
+        fly({ x: p.x, y: p.y }, () => L, arc * 0.5, MELEE_BACK_MS / speed, () => {
+          this.meleeTween = null;
+          this.inMelee = false;
+          p.setPosition(L.x, L.y).setAngle(0);
+          this.setHeroBase('idle');
+          const k = this.heroScale; // 착지 반동
+          this.tweens.add({ targets: p, scaleY: k * 0.86, scaleX: k * 1.08, duration: 80, yoyo: true, onComplete: () => p.setScale(k) });
+          if (!this.ended) this.startHeroBob();
+          if (opts.onLand) opts.onLand();
+        });
+      });
+    }
+
+    /** 판이 끝남: 이겼으면 승리 춤(만세 · 깡충), 졌으면 털썩. 3D 화면처럼 Phaser 히어로가 없으면 건너뛴다. */
+    heroFinale(won) {
+      const p = this.player;
+      if (!p || !p.active || !this.heroAnim) return;
+      this.stopHeroBob();
+      if (this.meleeTween) this.meleeTween.stop();
+      this.inMelee = false;
+      this.heroAnim.pose = null;
+      this.setHeroBase(won ? 'win' : 'hurt');
+      p.setAngle(0);
+      if (won) this.tweens.add({ targets: p, y: p.y - 26, duration: 260, yoyo: true, repeat: -1, ease: 'Quad.Out' });
+    }
+
+    /** 줄 · 공격이 나가는 손 위치. 지금 자세(공격 자세면 쭉 뻗은 손)와 크기 · 좌우 방향을 반영한다. */
     hand() {
-      const dir = this.player.flipX ? -1 : 1;
-      const k = Math.abs(this.player.scaleY) || 1; // 히어로를 크게 · 작게 그린 모드도 손 위치가 맞게
-      return { x: this.player.x + dir * GAME.HAND_OFFSET.x * k, y: this.player.y + GAME.HAND_OFFSET.y * k };
+      const p = this.player;
+      const r = A.heroHand(p.texture.key.replace('hero-', ''));
+      const dir = p.flipX ? -1 : 1;
+      const k = Math.abs(p.scaleY) || 1; // 히어로를 크게 · 작게 그린 모드도 손 위치가 맞게
+      const { w, h } = GAME.HERO_SIZE;
+      return { x: p.x + dir * r.x * w * k, y: p.y + r.y * h * k };
     }
 
     createHud() {

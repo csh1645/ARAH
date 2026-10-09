@@ -9,6 +9,7 @@
  *       순서가 틀린 글자 → 거미줄이 끊어지고 블록이 흔들림. 철자는 실수가 잦은 활동이라 **하트는 깎지 않고**
  *       별(한 번에 맞힌 문제) 대상에서만 빠진다. HINT_AFTER 번 틀리면 다음 글자를 반짝여 알려 준다.
  * 조작: 블록 터치 · 클릭, 또는 키보드로 알파벳 입력. 상단 문제를 누르면 발음을 다시 들려준다.
+ * 근접 팀(거인 · 표범)은 줄 없이 블록까지 뛰어올라 쳐서 빈칸으로 날려 보낸다 (기반 meleeTo).
  */
 (function (A) {
   'use strict';
@@ -39,6 +40,7 @@
     }
 
     introText() {
+      if (this.attackStyle.melee) return `${this.hero.name} 출동!\n알파벳을 순서대로 쳐서 날려요`;
       return `${this.hero.name} 출동!\n알파벳을 순서대로 ${this.shotName}로 잡아요`;
     }
 
@@ -61,7 +63,7 @@
       g.fillRect(0, 600, W, 40);
 
       this.createHero(W / 2, HERO_Y);
-      this.tweens.add({ targets: this.player, y: HERO_Y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.startHeroBob();
       this.webGfx = this.add.graphics().setDepth(DEPTH.web);
 
       this.input.on('pointerdown', (p) => {
@@ -215,23 +217,24 @@
       if (!this.waveActive || this.busy || !b || b.used) return;
       this.busy = true;
       const expected = this.word[this.idx];
+      const judge = () => {
+        this.attackHit(b.c.x, b.c.y);
+        if (b.ch === expected) this.pull(b);
+        else this.snap(b);
+      };
+      if (this.attackStyle.melee) { // 근접 팀: 블록 아래까지 뛰어올라 친다
+        this.meleeTo(() => ({ x: b.c.x, y: b.c.y + BLOCK / 2 + 34 }), judge, { land: { x: W / 2, y: HERO_Y } });
+        return;
+      }
       const speed = (this.ab.webSpeed || 1) * this.attackStyle.speed;
       this.player.setFlipX(b.c.x < this.player.x - 10);
+      this.heroShoot();
       const tip = { ...this.hand() };
       this.web = { to: tip, phase: 'shoot' };
-      this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true }); // 발사 반동
-      this.shotSfx();
-      this.tweens.add({
-        targets: tip, x: b.c.x, y: b.c.y, duration: SHOOT_MS / speed,
-        onComplete: () => {
-          this.attackHit(b.c.x, b.c.y);
-          if (b.ch === expected) this.pull(b);
-          else this.snap(b);
-        },
-      });
+      this.tweens.add({ targets: tip, x: b.c.x, y: b.c.y, duration: SHOOT_MS / speed, onComplete: judge });
     }
 
-    /** 맞는 글자: 거미줄에 매달아 다음 빈칸으로 끌어온다. */
+    /** 맞는 글자: 거미줄에 매달아 다음 빈칸으로 끌어온다 (근접 팀은 줄 없이 쳐서 날려 보낸다). */
     pull(b) {
       b.used = true;
       b.placed = true;
@@ -239,12 +242,14 @@
       const slot = this.slots[this.idx];
       this.idx++;
       this.wrongCount = 0;
-      this.web = { to: b.c, phase: 'pull' };
+      this.web = this.attackStyle.melee ? null : { to: b.c, phase: 'pull' };
       b.c.setDepth(DEPTH.world + 2);
+      if (this.attackStyle.melee) this.tweens.add({ targets: b.c, angle: 360, duration: PULL_MS / (this.ab.webSpeed || 1) }); // 빙글 날아감
       this.tweens.add({
         targets: b.c, x: slot.x, y: slot.y, scale: 0.85, duration: PULL_MS / (this.ab.webSpeed || 1), ease: 'Cubic.InOut',
         onComplete: () => {
           this.web = null;
+          b.c.angle = 0;
           this.burster.explode(10, slot.x, slot.y);
           this.updateSlotHl();
           this.busy = false;
@@ -256,8 +261,10 @@
 
     /** 틀린 글자: 거미줄이 빨갛게 끊어지고 블록이 흔들린다. */
     snap(b) {
-      this.web = { to: { x: b.c.x, y: b.c.y }, phase: 'snap' };
-      this.time.delayedCall(140, () => { this.web = null; });
+      if (!this.attackStyle.melee) { // 근접 팀은 줄이 없으니 블록 흔들림만
+        this.web = { to: { x: b.c.x, y: b.c.y }, phase: 'snap' };
+        this.time.delayedCall(140, () => { this.web = null; });
+      }
       b.t.setColor('#ff5c5c');
       this.tweens.add({
         targets: b.c, angle: { from: -12, to: 12 }, duration: 60, yoyo: true, repeat: 2,

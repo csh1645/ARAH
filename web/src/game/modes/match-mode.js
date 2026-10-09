@@ -57,8 +57,7 @@
       this.drawSky();
       const g = this.add.graphics().setDepth(DEPTH.bg);
       this.drawCity(g, 640, 0x1a1f45, [80, 200]);
-      this.createHero(70, 560);
-      this.player.setScale(0.8);
+      this.createHero(70, 560, 0.8);
       this.webGfx = this.add.graphics().setDepth(DEPTH.web);
       this.links = []; // 짝 맞춘 카드를 잇는 줄 [{a, b}]
 

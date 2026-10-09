@@ -26,7 +26,7 @@
  * @property {boolean} rope  손과 머리 사이를 줄로 이을지 (거미줄 · 빔 · 번개 · 화살 줄) — 끌어오기에도 쓴다
  * @property {(c: AttackDrawContext) => void} draw  투사체 그리기
  * @property {(scene: Phaser.Scene, x: number, y: number) => void} hit  맞았을 때 연출
- * @property {{arc: number}} [melee] 보스 배틀에서 투사체 대신 히어로가 직접 뛰어들어 때린다 (arc: 점프 높이 px)
+ * @property {{arc: number}} [melee] 근접 팀: 어떤 놀이에서도 쏘지 않고 히어로가 직접 뛰어들어 때린다 (round-scene meleeTo, arc: 점프 높이 px)
  * @property {boolean} [returns]     보스 배틀에서 던진 것이 맞힌 뒤 손으로 돌아온다 (방패)
  */
 (function (A) {
@@ -127,7 +127,7 @@
     },
 
     rock: {
-      name: '바위 던지기', speed: 0.9, rope: false, melee: { arc: 230 }, // 보스전: 높이 뛰어 내려찍기
+      name: '점프 내려찍기', speed: 0.9, rope: false, melee: { arc: 230 }, // 쏘지 않고 높이 뛰어 내려찍기
       draw({ g, from, to, time }) {
         const d = dirOf(from, to);
         g.fillStyle(0x8d6e63, 0.35); // 먼지 꼬리
@@ -185,7 +185,7 @@
     },
 
     claw: {
-      name: '발톱 할퀴기', speed: 1.5, rope: false, melee: { arc: 70 }, // 보스전: 낮게 달려들어 할퀴기
+      name: '발톱 할퀴기', speed: 1.5, rope: false, melee: { arc: 70 }, // 쏘지 않고 낮게 달려들어 할퀴기
       draw({ g, from, to, color }) {
         const d = dirOf(from, to);
         const px = -d.y;

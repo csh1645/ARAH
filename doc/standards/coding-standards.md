@@ -15,7 +15,7 @@ web/src/
 ├─ data/        순수 데이터 (히어로, 단어, 규칙)          → core 만 사용
 ├─ questions/   문제 생성 로직                            → core, data 만 사용
 ├─ game/        Phaser 게임 (위 모든 계층 사용 가능)
-│  ├─ hero-art.js     캐릭터 그리기
+│  ├─ hero-art.js     캐릭터 그리기 (자세 프레임 POSES 포함)
 │  ├─ round-scene.js  모든 모드 공통 규칙 (기반 장면)
 │  ├─ travels.js      팀별 건너가기 연출 (빌딩 스윙에서 사용)
 │  ├─ attacks.js      팀별 공격 모양 (드론 잡기 · 철자 잇기 · 보스 배틀에서 사용)

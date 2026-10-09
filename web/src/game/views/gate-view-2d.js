@@ -53,6 +53,7 @@
       this.stripeGfx = s.add.graphics().setDepth(DEPTH.bg);
       this.speedGfx = s.add.graphics().setDepth(DEPTH.web);
       this.hero = s.createHero(this.laneXs[startLane], HERO_Y);
+      s.setHeroBase('run'); // 계속 달린다 (팔다리 번갈아)
       this.webGfx = s.add.graphics().setDepth(DEPTH.web);
     }
 

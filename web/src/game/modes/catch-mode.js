@@ -5,6 +5,8 @@
  * @see doc/planning/game-design.md (3.1 드론 잡기)
  *
  * 판정: 정답 명중 → 다음 문제 / 오답 명중 → 하트 -1, 같은 문제 계속 / 정답 드론 놓침 → 하트 -1, 다음 문제
+ * 근접 팀(거인 · 표범, AttackStyle.melee)은 쏘지 않고 드론까지 뛰어올라 직접 때린다 (기반 meleeTo).
+ *   빈 곳을 누르면 그 자리로 달려간다.
  */
 (function (A) {
   'use strict';
@@ -39,6 +41,7 @@
     }
 
     introText() {
+      if (this.attackStyle.melee) return `${this.hero.name} 출동!\n정답 드론으로 뛰어올라 쾅!`;
       return `${this.hero.name} 출동!\n정답 드론에 ${this.shotName}을 쏘세요`;
     }
 
@@ -68,7 +71,8 @@
       this.tweens.add({ targets: portal, scaleX: 1.12, scaleY: 0.9, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
 
       this.createHero(W / 2, HERO_Y);
-      this.tweens.add({ targets: this.player, y: HERO_Y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.startHeroBob();
+      this.runTween = null;
       this.webGfx = this.add.graphics().setDepth(DEPTH.web);
 
       this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,A,D,SPACE');
@@ -138,6 +142,12 @@
       this.tweens.add({ targets: d.c, alpha: 0, y: d.c.y + dy, duration: 450, onComplete: () => d.c.destroy() });
     }
 
+    /** x 줄(세로 띠)에 있는 맞힐 수 있는 드론 중 가장 아래 것 (근접 팀이 스페이스로 위를 칠 때). 없으면 null. */
+    droneInColumn(x) {
+      const inCol = this.drones.filter((d) => !d.done && !d.decoy && Math.abs(x - d.c.x) <= d.w / 2 + LOCK_ON_PADDING);
+      return inCol.sort((a, b) => b.c.y - a.c.y)[0] || null;
+    }
+
     /** (x, y) 근처에 있는, 맞힐 수 있는 드론 중 가장 가까운 것. 없으면 null. */
     droneNear(x, y) {
       let best = null;
@@ -164,10 +174,15 @@
     fireAt(tx, ty) {
       if (!this.waveActive) return;
       const now = this.time.now;
-      if (now - this.lastFire < (this.ab.cooldown || DEFAULT_COOLDOWN)) return;
+      if (this.inMelee || now - this.lastFire < (this.ab.cooldown || DEFAULT_COOLDOWN)) return;
       this.lastFire = now;
+      if (this.attackStyle.melee) {
+        this.meleeAt(tx, ty);
+        return;
+      }
 
       this.player.setFlipX(tx < this.player.x - 10);
+      this.heroShoot(); // 공격 자세 · 반동 · 발사음 (손 위치가 뻗은 팔 끝으로 바뀐다)
       const o = this.hand();
       const dx = tx - o.x;
       const dy = Math.min(ty - o.y, -20); // 항상 위쪽으로
@@ -178,9 +193,45 @@
         x: o.x, y: o.y, vx: (dx / len) * speed, vy: (dy / len) * speed, speed,
         target: this.droneNear(tx, ty), dead: false,
       });
-      // 발사 반동: 살짝 눌렸다 펴진다
-      this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true });
-      this.shotSfx();
+    }
+
+    /**
+     * 근접 팀: 누른 드론(없으면 그 줄의 가장 아래 드론)까지 뛰어올라 아래에서 때리고, 그 아래 땅에 착지한다.
+     * 드론이 없으면 그 자리로 달려간다.
+     */
+    meleeAt(tx, ty) {
+      const d = this.droneNear(tx, ty) || this.droneInColumn(tx);
+      if (!d) {
+        this.runTo(tx);
+        return;
+      }
+      this.stopRun();
+      this.meleeTo(() => ({ x: d.c.x, y: d.c.y + d.h / 2 + 34 }), () => {
+        if (d.done || !this.waveActive) return; // 뛰는 사이 놓쳤거나 문제가 끝남
+        this.attackHit(d.c.x, d.c.y + d.h / 2);
+        if (d.isCorrect) this.onCorrect(d);
+        else this.onWrong(d);
+      }, { land: { x: Phaser.Math.Clamp(d.c.x, 50, W - 50), y: HERO_Y } });
+    }
+
+    /** 땅에서 x 까지 달려간다 (달리기 애니메이션). */
+    runTo(tx) {
+      const x = Phaser.Math.Clamp(tx, 50, W - 50);
+      this.stopRun();
+      this.player.setFlipX(x < this.player.x);
+      this.setHeroBase('run');
+      this.runTween = this.tweens.add({
+        targets: this.player, x, duration: (Math.abs(x - this.player.x) / MOVE_SPEED) * 1000,
+        onComplete: () => {
+          this.runTween = null;
+          this.setHeroBase('idle');
+        },
+      });
+    }
+
+    stopRun() {
+      if (this.runTween) this.runTween.stop();
+      this.runTween = null;
     }
 
     /** 정답 드론 명중: 점수 · 콤보 적립, (거미 팀은) 거미줄에 감기는 연출, 영어는 발음 읽기. */
@@ -246,9 +297,14 @@
       let dir = 0;
       if (k.LEFT.isDown || k.A.isDown) dir -= 1;
       if (k.RIGHT.isDown || k.D.isDown) dir += 1;
+      if (this.inMelee) dir = 0; // 뛰어오른 동안에는 움직이지 않는다
       if (dir !== 0) {
+        this.stopRun();
         this.player.x = Phaser.Math.Clamp(this.player.x + dir * MOVE_SPEED * s, 50, W - 50);
         this.player.setFlipX(dir < 0);
+        this.setHeroBase('run');
+      } else if (!this.inMelee && !this.runTween && this.heroAnim.base === 'run') {
+        this.setHeroBase('idle');
       }
       if (Phaser.Input.Keyboard.JustDown(k.SPACE)) this.fireAt(this.hand().x, 0);
 

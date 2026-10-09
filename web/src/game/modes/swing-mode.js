@@ -148,7 +148,8 @@
           b.used = true;
           b.c.setAlpha(0.3);
         }
-        // 오른쪽 화면 밖에서 밀려 들어온다
+        // 오른쪽 화면 밖에서 밀려 들어온다 (homeX: 도착할 자리)
+        b.homeX = cx;
         b.c.x = cx + W;
         this.tweens.add({ targets: b.c, x: cx, duration: 500, delay: i * 80, ease: 'Cubic.Out' });
         return b;
@@ -160,6 +161,18 @@
       this.timeLimit = this.timeLimitMs(base);
       this.timeLeft = this.timeLimit;
       this.swinging = false;
+    }
+
+    /**
+     * 밀려 들어오는 중인 보기 빌딩을 제자리에 바로 세운다.
+     * 빌딩이 다 들어오기 전에 고르면 히어로가 화면 밖(아직 이동 중인 위치)으로 날아가 사라지던 문제를 막는다.
+     */
+    settleTargets() {
+      for (const b of this.targets) {
+        if (b.c.x === b.homeX) continue;
+        this.tweens.killTweensOf(b.c);
+        b.c.x = b.homeX;
+      }
     }
 
     /** 착지한 빌딩을 왼쪽 시작 위치로 옮기고 나머지는 화면 밖으로 흘려보낸다. */
@@ -217,6 +230,7 @@
 
     choose(b) {
       if (!this.waveActive || this.swinging || !b || b.used) return;
+      this.settleTargets();
       if (b.isCorrect) this.swingTo(b, true);
       else this.failSwing(b);
     }
@@ -228,6 +242,7 @@
     swingTo(b, earned) {
       this.swinging = true;
       this.player.setFlipX(false);
+      this.setHeroBase('jump'); // 건너가는 동안 점프 자세
       const family = A.findFamily(this.hero);
       const travel = A.TRAVELS[family.travel] || A.TRAVELS.swing;
       this.shotSfx(); // 팀 발사음으로 출발 (거미줄 슉 · 제트 지잉 · 번개 콰직 …)
@@ -242,6 +257,7 @@
           // 이동 연출이 바꾼 모양을 원래대로 되돌린다
           this.line = null;
           this.player.setAngle(0).setScale(1).setAlpha(1);
+          this.setHeroBase('idle');
           this.land(b, earned);
         },
       });

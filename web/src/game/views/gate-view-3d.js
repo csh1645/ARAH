@@ -31,6 +31,8 @@
   const CITY_COUNT = 46;
   const CITY_SPAN = 170; // 건물을 재활용하는 구간 길이
   const RUN_SPEED = 14; // 배경이 흐르는 속도 (단위/초). 대시 때는 배수
+  const HERO_RUN_FRAME_MS = 110; // 달리기 프레임 바꾸는 간격 (2D round-scene 과 같은 값)
+  const HERO_CHEER_MS = 600; // 문을 통과하고 만세 자세를 보여 주는 시간
 
   // ----- 카메라 -----
   const CAM_POS = { x: 0, y: 3.3, z: 6.8 };
@@ -219,10 +221,18 @@
       this.scene3.add(ground);
     }
 
-    /** 히어로는 뒷모습 그림을 스프라이트(항상 카메라를 보는 판)로 세운다. */
+    /**
+     * 히어로는 뒷모습 그림을 스프라이트(항상 카메라를 보는 판)로 세운다.
+     * 2D 와 같은 자세 프레임(hero-art.js POSES)을 뒷모습으로 미리 만들어 두고 update 에서 바꿔 끼운다.
+     */
     buildHero(startLane) {
-      const tex = canvasTexture(192, 216, (ctx, w, h) => A.drawHero(ctx, this.s.hero, w, h, { back: true }));
-      this.hero = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+      /** @type {Object<string, THREE.CanvasTexture>} 자세 이름 → 뒷모습 텍스처 */
+      this.heroFrames = {};
+      for (const pose of A.HERO_POSES) {
+        this.heroFrames[pose] = canvasTexture(192, 216, (ctx, w, h) => A.drawHero(ctx, this.s.hero, w, h, { back: true, pose }));
+      }
+      this.cheerUntil = 0; // 이 시각(장면 시간)까지 만세 자세
+      this.hero = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heroFrames.run1, transparent: true }));
       this.hero.scale.set(1.45, 1.63, 1);
       this.heroTargetX = this.laneX(startLane);
       this.hero.position.set(this.heroTargetX, HERO_Y, 0);
@@ -381,6 +391,7 @@
     // ---------- 판정 연출 ----------
 
     markPass(d) {
+      this.cheerUntil = this.s.time.now + HERO_CHEER_MS; // 통과하며 만세
       d.v.glassMat.color.set(0x06d6a0);
       d.v.glassMat.emissive.set(0x06d6a0);
     }
@@ -450,6 +461,7 @@
       this.shadow.position.x = this.hero.position.x;
       this.shadow.visible = this.hero.position.y > 0;
 
+      this.setHeroFrame(time, st);
       if (!st.busy) {
         this.hero.position.y = HERO_Y + Math.abs(Math.sin(time / 90)) * 0.12; // 달리는 들썩임
         const move = RUN_SPEED * st.speed * dt;
@@ -507,11 +519,23 @@
       this.renderer.render(this.scene3, cam);
     }
 
+    /** 지금 보여 줄 히어로 자세: 떨어지는 중 = 아야, 문 통과 직후 = 만세, 그 밖에는 달리기 (팔다리 번갈아) */
+    setHeroFrame(time, st) {
+      let pose = Math.floor(time / HERO_RUN_FRAME_MS) % 2 ? 'run1' : 'run2';
+      if (st.busy) pose = 'hurt';
+      else if (this.s.time.now < this.cheerUntil) pose = 'win';
+      const map = this.heroFrames[pose];
+      if (this.hero.material.map === map) return;
+      this.hero.material.map = map;
+      this.hero.material.needsUpdate = true;
+    }
+
     /** 장면이 끝나면 GPU 자원을 해제하고 3D 캔버스를 지운다. 여러 번 불려도 한 번만 처리한다. */
     destroy() {
       if (this.destroyed) return;
       this.destroyed = true;
       disposeTree(this.scene3);
+      Object.values(this.heroFrames || {}).forEach((t) => t.dispose()); // 지금 안 쓰는 자세 텍스처도 해제
       if (this.shardGeo) this.shardGeo.dispose();
       this.renderer.dispose();
       this.renderer.forceContextLoss();

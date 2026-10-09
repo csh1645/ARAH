@@ -65,9 +65,8 @@
       g.fillStyle(0x2a2e5c, 1);
       g.fillRect(0, 500, W, 140); // 아래쪽 버튼 영역 바닥
 
-      this.createHero(HERO_X, HERO_Y);
-      this.player.setScale(1.3);
-      this.tweens.add({ targets: this.player, y: HERO_Y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      this.createHero(HERO_X, HERO_Y, 1.3);
+      this.startHeroBob(5);
       this.makeBoss();
       this.hpGfx = this.add.graphics().setDepth(DEPTH.world + 2);
       this.chargeGfx = this.add.graphics().setDepth(DEPTH.world + 2);
@@ -205,7 +204,6 @@
       const crit = this.combo >= CRIT_COMBO;
       const dmg = crit ? 2 : 1;
       if (this.q.speak) A.speak(this.q.speak);
-      this.shotSfx();
       this.deliverAttack(() => {
         this.sfx('hit');
         this.attackHit(BOSS_X, BOSS_Y);
@@ -224,18 +222,18 @@
      * 팀 공격 스타일대로 보스에게 공격을 전달하고, 맞는 순간 onImpact 를 부른다.
      *  - 기본: 투사체(거미줄 · 빔 · 번개 · 화살 · 구슬 …)가 날아간다
      *  - returns(방패): 맞힌 뒤 손으로 돌아온다
-     *  - melee(거인 · 표범): 히어로가 직접 뛰어들어 때리고 제자리로 돌아온다
+     *  - melee(거인 · 표범): 히어로가 직접 뛰어들어 때리고 제자리로 돌아온다 (기반 meleeTo)
      * @param {() => void} onImpact
      */
     deliverAttack(onImpact) {
       const style = this.attackStyle;
       if (style.melee) {
-        this.meleeAttack(style.melee.arc, onImpact);
+        this.meleeTo({ x: BOSS_X - 170, y: BOSS_Y + 30 }, onImpact, { land: { x: HERO_X, y: HERO_Y } });
         return;
       }
+      this.heroShoot();
       const tip = { ...this.hand() };
       this.shot = { to: tip };
-      this.tweens.add({ targets: this.player, scaleX: 1.4, scaleY: 1.2, duration: 70, yoyo: true });
       this.tweens.add({
         targets: tip, x: BOSS_X, y: BOSS_Y, duration: SHOT_MS / ((this.ab.webSpeed || 1) * style.speed),
         onComplete: () => {
@@ -247,35 +245,6 @@
           const hand = this.hand(); // 방패가 손으로 돌아온다
           this.tweens.add({ targets: tip, x: hand.x, y: hand.y, duration: 260, ease: 'Quad.In', onComplete: () => { this.shot = null; } });
         },
-      });
-    }
-
-    /** 히어로가 보스 앞까지 뛰어올라(arc) 때리고 돌아온다. 거인은 높이, 표범은 낮고 빠르게. */
-    meleeAttack(arc, onImpact) {
-      this.tweens.killTweensOf(this.player); // 둥실둥실 tween 정지 (경로 이동과 겹치지 않게)
-      const S = { x: HERO_X, y: HERO_Y };
-      const T = { x: BOSS_X - 170, y: BOSS_Y + 30 };
-      const C = { x: (S.x + T.x) / 2, y: Math.min(S.y, T.y) - arc };
-      const p = { t: 0 };
-      const go = (from, to, mid, ms, done) => {
-        p.t = 0;
-        this.tweens.add({
-          targets: p, t: 1, duration: ms, ease: 'Sine.InOut',
-          onUpdate: () => {
-            const pt = A.util.bezier2(from, mid, to, p.t);
-            this.player.setPosition(pt.x, pt.y);
-          },
-          onComplete: done,
-        });
-      };
-      const speed = this.ab.webSpeed || 1;
-      go(S, T, C, 340 / speed, () => {
-        this.tweens.add({ targets: this.player, angle: 20, duration: 70, yoyo: true }); // 내려찍기 · 할퀴기 동작
-        onImpact();
-        go(T, S, { x: C.x, y: C.y + arc * 0.5 }, 300 / speed, () => {
-          this.player.setPosition(HERO_X, HERO_Y).setAngle(0);
-          this.tweens.add({ targets: this.player, y: HERO_Y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-        });
       });
     }
 
