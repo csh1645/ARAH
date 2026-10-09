@@ -189,6 +189,7 @@
 
     flip(card) {
       if (this.locked || !this.waveActive || card.done || card.faceUp) return;
+      this.sfx('flip');
       this.turn(card, true);
       this.open.push(card);
       if (this.open.length < 2) return;

@@ -3,7 +3,7 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.drawHero, A.findFamily
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.findFamily
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -117,6 +117,10 @@
       }).setDepth(DEPTH.popup);
 
       this.createWorld();
+      // 배경음: 판이 시작될 때 켜고, 장면이 끝나면(그만하기 · 결과) 끈다
+      A.Sfx.music.start(this.musicName());
+      this.events.once('shutdown', () => A.Sfx.music.stop());
+      this.events.once('destroy', () => A.Sfx.music.stop());
       this.createHud();
       this.showIntro(this.introText());
       this.time.delayedCall(INTRO_MS, () => this.nextQuestion());
@@ -126,6 +130,8 @@
 
     introText() { return `${this.hero.name} 출동!`; }
     /** 판이 끝났을 때 크게 보여 줄 문구 (보스 배틀처럼 승패가 다른 모드가 바꾼다) */
+    /** 배경음 곡 이름 (core/sfx.js 의 SONGS). 보스 배틀은 'boss' */
+    musicName() { return 'hero'; }
     finishMessage(perfect) {
       if (this.hearts <= 0) return '조금만 더 힘내요!';
       return perfect ? '퍼펙트 미션!' : '미션 완료!';
@@ -204,6 +210,7 @@
       const pts = BASE_POINTS + Math.round((this.combo - 1) * COMBO_STEP * (this.ab.comboBonus || 1));
       this.score += pts;
       this.updateHud();
+      this.sfx('correct');
       if (x !== undefined) this.celebrate(x, y);
       return pts;
     }
@@ -223,6 +230,7 @@
       this.cameras.main.shake(160, 0.006);
       this.updateHud();
       this.flashScreen(0xff3355, loseHeart ? 0.22 : 0.12);
+      this.sfx(loseHeart ? 'hurt' : 'wrong');
       if (!loseHeart) return;
       this.tweens.add({ targets: this.heartText, x: { from: 12, to: 24 }, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.heartText.setX(18) });
     }
@@ -250,7 +258,10 @@
       const cam = this.cameras.main;
       this.tweens.add({ targets: cam, zoom: big ? 1.06 : 1.03, duration: 110, yoyo: true, ease: 'Quad.Out' });
       this.tweens.add({ targets: this.comboText, scale: { from: 1.6, to: 1 }, duration: 250, ease: 'Back.Out' });
-      if (big) this.comboBanner(this.combo);
+      if (big) {
+        this.comboBanner(this.combo);
+        this.sfx('combo');
+      }
     }
 
     /** 화면을 가로지르는 콤보 배너 (예: "🔥 5 콤보! 대단해요!") */
@@ -307,6 +318,18 @@
       this.time.delayedCall(delay, () => this.nextQuestion());
     }
 
+    // ---------- 소리 (모드는 이 두 함수만 부른다 — 소리 모양은 core/sfx.js 에서 관리) ----------
+
+    /** 상황 효과음 (correct · wrong · glass · hit · flip …) @param {string} name */
+    sfx(name) {
+      A.Sfx.play(name);
+    }
+
+    /** 지금 히어로 팀의 발사음 (거미줄 슉 · 레이저 지잉 · 번개 콰직 …) */
+    shotSfx() {
+      A.Sfx.shot(this.hero.family);
+    }
+
     // ---------- 히어로 능력 공통 계산 (모드마다 같은 공식을 쓰도록 한곳에 둔다) ----------
 
     /**
@@ -349,6 +372,8 @@
       // 복습 판은 문제 수가 적을 수 있다 → 그 판의 문제 수 기준. 단 3문제 미만은 퍼펙트 보너스 없음
       const perfect = total === this.totalQuestions && total >= 3 && this.firstTry === total;
       const msg = this.finishMessage(perfect);
+      A.Sfx.music.stop();
+      this.sfx(this.hearts <= 0 ? 'lose' : 'win');
       this.qText.setText('');
       this.hintText.setText('');
       const t = this.add

@@ -37,6 +37,15 @@ h2 { margin: 28px 0 12px; font-size: 22px; font-weight: normal; color: var(--acc
 .tagline b { color: var(--gold); font-weight: normal; }
 .stars { display: inline-block; margin: 10px 0 0; padding: 6px 16px; border-radius: 999px; background: var(--panel); font-size: 20px; }
 
+/* 소리 켜기 · 끄기 */
+.sound-toggles { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+.sound-btn {
+  min-height: 40px; padding: 6px 14px; border: 2px solid var(--panel-2); border-radius: 999px;
+  background: var(--panel); color: var(--text); font-size: 15px;
+}
+.sound-btn[aria-pressed="false"] { opacity: .55; }
+.quit.mute { left: auto; right: 12px; }
+
 /* 히어로 도감 (팀별 묶음) */
 .next-hero { margin: 6px 0 0; color: var(--gold); font-size: 16px; }
 .family-head {

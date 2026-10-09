@@ -179,6 +179,7 @@
       });
       // 발사 반동: 살짝 눌렸다 펴진다
       this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true });
+      this.shotSfx();
     }
 
     /** 정답 드론 명중: 점수 · 콤보 적립, 거미줄에 감기는 연출, 영어는 발음 읽기. */

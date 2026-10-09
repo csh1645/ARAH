@@ -230,6 +230,7 @@
       this.player.setFlipX(false);
       const family = A.findFamily(this.hero);
       const travel = A.TRAVELS[family.travel] || A.TRAVELS.swing;
+      this.shotSfx(); // 팀 발사음으로 출발 (거미줄 슉 · 제트 지잉 · 번개 콰직 …)
       travel({
         scene: this,
         from: { x: this.player.x, y: this.player.y },
@@ -248,6 +249,7 @@
 
     land(b, earned) {
       this.tweens.add({ targets: this.player, scaleY: 0.85, duration: 90, yoyo: true }); // 착지 반동
+      this.sfx('land');
       if (earned) {
         const pts = this.awardCorrect(b.c.x, b.roofY - 40);
         b.text.setColor('#06d6a0');

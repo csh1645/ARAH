@@ -171,6 +171,7 @@
         return g;
       };
       const p1 = portal(S.x, S.y + 40);
+      s.sfx('teleport');
       const dur = 280 / speedOf(s);
       s.tweens.add({
         targets: s.player, scale: 0, alpha: 0, angle: 180, duration: dur, ease: 'Back.In',

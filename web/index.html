@@ -18,6 +18,10 @@
         <p class="tagline">8개 팀 히어로를 모으며 <b>정답</b>으로 도시를 지켜라!</p>
         <p class="stars">모은 스타 ⭐ <span id="starCount">0</span> · 히어로 도감 🦸 <span id="heroCount">0</span></p>
         <p id="nextHero" class="next-hero"></p>
+        <div class="sound-toggles">
+          <button id="sfxToggle" type="button" class="sound-btn"></button>
+          <button id="bgmToggle" type="button" class="sound-btn"></button>
+        </div>
       </header>
 
       <h2>1. 히어로를 골라요</h2>
@@ -45,6 +49,7 @@
     <section id="play" class="screen" hidden>
       <div id="game"></div>
       <button id="quitBtn" type="button" class="quit">그만하기</button>
+      <button id="muteBtn" type="button" class="quit mute" aria-label="소리 켜기 · 끄기"></button>
       <!-- 폰을 세로로 들면 게임이 작아지므로 가로로 돌리도록 안내하고 게임을 멈춘다 -->
       <div id="rotateHint" class="rotate-hint" hidden>
         <div class="rotate-icon">📱↻</div>
@@ -75,6 +80,7 @@
   <script src="src/core/util.js"></script>
   <script src="src/core/storage.js"></script>
   <script src="src/core/speech.js"></script>
+  <script src="src/core/sfx.js"></script>
   <!-- data -->
   <script src="src/data/curriculum.js"></script>
   <script src="src/data/heroes.js"></script>

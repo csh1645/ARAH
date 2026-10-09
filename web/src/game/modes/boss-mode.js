@@ -202,11 +202,13 @@
       if (this.q.speak) A.speak(this.q.speak);
       const tip = { ...this.hand() };
       this.shot = { to: tip, color: this.shotColor };
+      this.shotSfx();
       this.tweens.add({ targets: this.player, scaleX: 1.4, scaleY: 1.2, duration: 70, yoyo: true });
       this.tweens.add({
         targets: tip, x: BOSS_X, y: BOSS_Y, duration: SHOT_MS / (this.ab.webSpeed || 1),
         onComplete: () => {
           this.shot = null;
+          this.sfx('hit');
           this.bossHp = Math.max(0, this.bossHp - dmg);
           this.drawHp();
           this.bossFlash.setFillStyle(0xffffff, 0.7);
@@ -231,6 +233,7 @@
     /** 충전이 가득 참: 보스 레이저 공격 → 하트 -1, 정답 알려 주고 다음 문제 */
     bossAttack() {
       this.busy = true;
+      this.sfx('bossAttack');
       this.penalize(true);
       const right = this.buttons.find((b) => b.isCorrect);
       if (right) right.t.setColor('#ffd166');
@@ -252,6 +255,11 @@
       this.totalQuestions = this.qIndex; // 이긴 즉시 판을 끝낸다
       this.updateHud();
       this.endWave(900);
+    }
+
+    /** 보스 배틀은 긴장감 있는 배경음 */
+    musicName() {
+      return 'boss';
     }
 
     finishMessage(perfect) {

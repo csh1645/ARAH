@@ -21,7 +21,7 @@
 | 1~6단계 수학 · 영어 123단어 · 듣기 문제 | ✅ |
 | 오답 복습 노트 (간격 반복, `questions/review.js`) | ✅ |
 | 새 단어 83개 발음 파일 | ⏳ 아직 40개만 있음 (나머지는 기기 음성으로 대체) — kokoro 생성기로 증분 생성 필요 |
-| 효과음 · 배경음 (팀별 발사음 등) | ⏳ 사용자 요청, 다음 작업 (Web Audio 합성 예정) |
+| 효과음 · 배경음 (팀별 발사음 8종 · 상황음 13종 · 배경음 2곡) | ✅ `core/sfx.js` Web Audio 합성, 모드는 `this.sfx()` · `this.shotSfx()` 만 호출 |
 | 동적 연출, 폰 세로 안내 | ✅ |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
@@ -81,6 +81,8 @@ web/src/
 * 자동 플레이 스크립트에서 "모든 드론이 나타났는지" 검사할 때 힌트 능력의 가짜 드론(`d.decoy`, 반투명)은 제외해야 한다
 * 내장 브라우저에는 한국어 음성만 있어 영어 TTS 품질 확인 불가 → 발음 파일로 해결함. 발음 재생 확인은 `HTMLMediaElement.prototype.play`를 감싸 재생된 파일 이름을 기록하는 방식으로 한다
 * 발음 파일 검증: `OfflineAudioContext.decodeAudioData`로 길이(0.25~2초) · RMS(0.03 이상)를 확인 (에이전트는 소리를 직접 들을 수 없음 → 최종 청취는 사용자에게 요청)
+* 효과음 검증: `AudioContext.prototype.createOscillator / createBufferSource` 를 감싸 생성 수를 센다 (예: 보스 정답 공격 = 발진기 3 · 잡음 2). 배경음은 `ARAH.Sfx.music.timer` 로 재생 여부 확인
+* 다른 탭(발음 생성 서버 등)을 열면 게임 탭이 가려져 멈춘다 → 테스트 전 `tabs_select` 로 게임 탭을 앞으로
 
 ## 6. Git · 배포
 

@@ -215,6 +215,7 @@
       this.penalize();
       this.blockDoor(d);
       this.view.markWrong(d);
+      this.sfx('glass');
       this.popup(this.view.doorScreenPos(d).x, 330, '앗! 깨지는 문이었어요', '#ff5c5c');
       this.view.crash(d, () => { this.rescuing = true; }, () => this.afterRescue());
     }

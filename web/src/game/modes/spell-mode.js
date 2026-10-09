@@ -217,6 +217,7 @@
       const tip = { ...this.hand() };
       this.web = { to: tip, color: this.shotColor };
       this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true }); // 발사 반동
+      this.shotSfx();
       this.tweens.add({
         targets: tip, x: b.c.x, y: b.c.y, duration: SHOOT_MS / speed,
         onComplete: () => (b.ch === expected ? this.pull(b) : this.snap(b)),

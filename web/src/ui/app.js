@@ -258,6 +258,7 @@
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     // 버튼을 누른 이 순간(사용자 동작)에만 허용되는 일들: 모바일 오디오 열기, 전체 화면 · 가로 고정
     A.unlockAudio();
+    A.Sfx.unlock();
     enterLandscape();
     store.set('hero', state.heroId);
     store.set('mode', state.mode);
@@ -275,6 +276,7 @@
   }
 
   function stopGame() {
+    A.Sfx.music.stop();
     if (game) {
       game.destroy(true);
       game = null;
@@ -364,6 +366,26 @@
     show('result');
   }
 
+  // ---------- 소리 설정 ----------
+
+  /** @param {'sfx'|'bgm'} kind */
+  function toggleSound(kind) {
+    A.Sfx.unlock(); // 버튼을 누른 순간이 소리를 열 수 있는 기회
+    A.Sfx.setEnabled(kind, !A.Sfx.isEnabled(kind));
+    if (kind === 'sfx' && A.Sfx.isEnabled('sfx')) A.Sfx.play('click'); // 켜졌는지 바로 들려준다
+    renderSoundButtons();
+  }
+
+  function renderSoundButtons() {
+    const sfx = A.Sfx.isEnabled('sfx');
+    const bgm = A.Sfx.isEnabled('bgm');
+    $('#sfxToggle').textContent = sfx ? '🔊 효과음 켜짐' : '🔇 효과음 꺼짐';
+    $('#sfxToggle').setAttribute('aria-pressed', String(sfx));
+    $('#bgmToggle').textContent = bgm ? '🎵 배경음 켜짐' : '🎵 배경음 꺼짐';
+    $('#bgmToggle').setAttribute('aria-pressed', String(bgm));
+    $('#muteBtn').textContent = sfx || bgm ? '🔊' : '🔇';
+  }
+
   function backToMenu() {
     stopGame();
     exitLandscape();
@@ -374,6 +396,16 @@
   document.addEventListener('DOMContentLoaded', () => {
     $('#startBtn').addEventListener('click', startRound);
     $('#quitBtn').addEventListener('click', backToMenu);
+    // 소리 켜기 · 끄기: 메뉴는 효과음 · 배경음 따로, 게임 중 버튼은 둘 다 한 번에
+    $('#sfxToggle').addEventListener('click', () => toggleSound('sfx'));
+    $('#bgmToggle').addEventListener('click', () => toggleSound('bgm'));
+    $('#muteBtn').addEventListener('click', () => {
+      const on = !(A.Sfx.isEnabled('sfx') || A.Sfx.isEnabled('bgm'));
+      A.Sfx.setEnabled('sfx', on);
+      A.Sfx.setEnabled('bgm', on);
+      renderSoundButtons();
+    });
+    renderSoundButtons();
     $('#retryBtn').addEventListener('click', startRound);
     $('#menuBtn').addEventListener('click', backToMenu);
     renderMenu();
