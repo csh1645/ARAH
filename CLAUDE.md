@@ -18,8 +18,8 @@
 | 놀이 방법 4종 (드론 잡기 · 빌딩 스윙 · 문 통과 · 3D 문 통과) | ✅ 완성, 모두 10문제 완주 테스트 통과 |
 | 히어로 6종 · 별 · 합류, 동적 연출, 폰 세로 안내 | ✅ |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
-| Vercel 배포 | ⏳ 사용자가 진행 중 (Root Directory `web`) |
-| **원어민 발음 파일 40개** | ⏳ 재생 구조 · 생성 스크립트 완료, **파일 출처 결정 대기** ([ADR-0004](doc/decisions/ADR-0004-pronunciation.md)) |
+| Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
+| **원어민 발음 파일 40개** | ⏳ 재생 구조 완료. 유력안: **kokoro-js(Kokoro-82M, Apache 2.0, 음성 `af_heart`)로 브라우저에서 1회 생성 → wav 커밋**. 모델(q8 약 86MB) 다운로드에 사용자 승인 필요 ([ADR-0004](doc/decisions/ADR-0004-pronunciation.md)) |
 | 실제 아이 · 실제 기기 플레이 테스트 | ⏳ 미실시 |
 
 남은 일 전체 목록: [doc/planning/roadmap.md](doc/planning/roadmap.md)

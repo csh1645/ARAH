@@ -2,6 +2,8 @@
 
 GitHub 저장소(`csh1645/ARAH`)의 `main` 브랜치에 push하면 Vercel이 자동으로 배포합니다.
 
+* **배포 주소:** https://arah-web-olive.vercel.app/ (2026-10-10 최초 배포)
+
 ## 최초 설정 (New Project)
 
 | 항목 | 값 | 이유 |
