@@ -15,7 +15,8 @@
 
 | 항목 | 상태 |
 |---|---|
-| 놀이 방법 4종 (드론 잡기 · 빌딩 스윙 · 문 통과 · 3D 문 통과) | ✅ 완성, 모두 10문제 완주 테스트 통과 |
+| 놀이 방법 5종 (드론 잡기 · 빌딩 스윙 · 문 통과 · 3D 문 통과 · 철자 잇기) | ✅ 완성, 모두 10문제 완주 테스트 통과 |
+| 히어로 확장 ("어벤저스처럼" 여러 유형 · 버전 수집) | ⏳ 사용자 요청 (2026-10-10). 공식 IP 금지 → 오리지널 "히어로 연합" 으로 설계 예정 |
 | 히어로 6종 · 별 · 합류, 동적 연출, 폰 세로 안내 | ✅ |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
@@ -62,6 +63,9 @@ web/src/
   * 드론 잡기: `s.fireAt(drone.c.x, drone.c.y)` (`s.lastFire = -9999`로 연사 제한 해제)
   * 빌딩 스윙: `s.choose(s.targets.find(b => b.isCorrect))`
   * 문 통과(2D · 3D): `s.setLane(correct.lane); s.dash = true`
+  * 철자 잇기: `s.pick(s.blocks.find(b => !b.used && b.ch === s.word[s.idx]))`, 또는 `window` 에 `KeyboardEvent('keydown', {key, keyCode})` 디스패치
+* **로컬 서버 캐시 주의:** `python -m http.server`는 바뀐 JS 를 캐시에서 내줄 수 있다 → 테스트 전 `fetch(url, {cache:'reload'})` 후 새로고침
+* **브라우저 창이 가려지면 게임 루프가 멈춘다** (`document.hidden`, frame 0). 테스트 전 `tabs_select`로 탭을 앞으로
   * 문제 생성기 검증: `ARAH.makeQuestion(subject, level, opts)`를 수천 번 호출해 정답 1개 · 보기 중복 없음 · 음수 없음 확인
   * 하나의 javascript 실행은 45초 제한 → 긴 완주는 백그라운드 async 루프로 돌리고 나중에 결과를 조회
 * 브라우저 창이 가려지면(document.hidden) Phaser가 자동 일시정지한다 — 버그 아님

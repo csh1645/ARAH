@@ -16,12 +16,15 @@
  * @property {string}   review  결과 화면 복습용 문장 (예: "7 + 5 = 12")
  * @property {string}   [speak] 정답 시 읽어 줄 영어 (영어 문제만)
  * @property {boolean}  [pictureChoices] 보기가 그림(이모지)이면 true. 화면은 보기 글자를 크게 그린다
+ * @property {boolean}  [spelling] 철자 잇기 문제. choices 는 섞인 알파벳(중복 가능), answer 는 완성할 단어
+ * @property {string[]} [decoys]   철자 잇기의 방해 글자
  */
 
 /**
  * 게임 모드가 문제 형식을 요청할 때 쓰는 옵션. 지원하지 않는 과목은 무시한다.
  * @typedef {Object} QuestionOptions
  * @property {boolean} [pictureChoices] 영어: 단어를 보고 그림을 고르는 문제로 낸다
+ * @property {boolean} [spelling] 철자 잇기 문제로 낸다 (과목과 상관없이 영어)
  */
 (function (A) {
   'use strict';
@@ -34,6 +37,8 @@
    * @returns {Question}
    */
   A.makeQuestion = function (subject, level, options = {}) {
-    return subject === 'eng' ? A.English.make(level, options) : A.MathQ.make(subject, level);
+    // 철자 잇기처럼 영어 전용 형식을 요청하면 과목 선택과 상관없이 영어 문제를 낸다
+    if (subject === 'eng' || options.spelling) return A.English.make(level, options);
+    return A.MathQ.make(subject, level);
   };
 })(window.ARAH);

@@ -169,17 +169,21 @@
       return pts;
     }
 
-    /** 오답 · 놓침 처리: 하트 -1, 콤보 초기화, 복습 목록에 추가, 화면 흔들림 · 빨간 번쩍임. */
-    penalize() {
+    /**
+     * 오답 · 놓침 처리: 하트 -1, 콤보 초기화, 복습 목록에 추가, 화면 흔들림 · 빨간 번쩍임.
+     * @param {boolean} [loseHeart=true] false 이면 하트는 그대로 두고 나머지만 처리 (철자 잇기처럼 실수가 잦은 모드)
+     */
+    penalize(loseHeart = true) {
       this.combo = 0;
-      this.hearts = Math.max(0, this.hearts - 1);
+      if (loseHeart) this.hearts = Math.max(0, this.hearts - 1);
       if (!this.q.missed) {
         this.q.missed = true;
         this.mistakes.push(this.q);
       }
       this.cameras.main.shake(160, 0.006);
       this.updateHud();
-      this.flashScreen(0xff3355, 0.22);
+      this.flashScreen(0xff3355, loseHeart ? 0.22 : 0.12);
+      if (!loseHeart) return;
       this.tweens.add({ targets: this.heartText, x: { from: 12, to: 24 }, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.heartText.setX(18) });
     }
 

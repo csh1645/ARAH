@@ -29,6 +29,7 @@
     { id: 'swing', label: '빌딩 스윙', icon: '🏙️', desc: '정답 빌딩을 골라 거미줄로 날아가요' },
     { id: 'gate', label: '문 통과', icon: '🚪', desc: '달리면서 정답 문으로 통과해요' },
     { id: 'gate3d', label: '3D 문 통과', icon: '🌆', desc: '3D 하늘 다리를 달려 정답 문으로!' },
+    { id: 'spell', label: '철자 잇기', icon: '🕸️', desc: '영어 전용 · 알파벳을 순서대로 거미줄로 잡아요' },
   ];
 
   /**

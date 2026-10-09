@@ -17,7 +17,7 @@ web/src/
 ├─ game/        Phaser 게임 (위 모든 계층 사용 가능)
 │  ├─ hero-art.js     캐릭터 그리기
 │  ├─ round-scene.js  모든 모드 공통 규칙 (기반 장면)
-│  ├─ modes/          놀이 방법별 장면: 규칙 · 판정 (catch, swing, gate, gate3d)
+│  ├─ modes/          놀이 방법별 장면: 규칙 · 판정 (catch, swing, gate, gate3d, spell)
 │  ├─ views/          모드의 화면 그리기 (gate-view-2d.js: Phaser, gate-view-3d.js: Three.js)
 │  └─ launcher.js     게임 시작 진입점 (A.startGame)
 └─ ui/          DOM 메뉴 · 결과 화면                      → 위 모든 계층 사용 가능

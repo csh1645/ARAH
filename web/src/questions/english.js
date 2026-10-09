@@ -94,17 +94,54 @@
     };
   }
 
+  /** 철자 잇기: 단계별 단어 최대 길이와 방해 글자 수 */
+  const SPELL_RULES = {
+    1: { maxLen: 4, decoys: 0 },
+    2: { maxLen: 6, decoys: 1 },
+    3: { maxLen: 99, decoys: 2 },
+  };
+
+  /**
+   * 철자 잇기 문제: 단어의 알파벳을 섞어 주고 순서대로 고르게 한다.
+   * 다른 문제와 달리 choices 에 같은 글자가 여러 번 들어갈 수 있다 (예: apple 의 p 두 개) — 이 모드만 쓰는 형식.
+   * @param {1|2|3} level
+   * @returns {Question}
+   */
+  function spellOrder(level) {
+    const rule = SPELL_RULES[level];
+    const word = pick(A.WORDS.filter((w) => w.en.length <= rule.maxLen));
+    const extra = [];
+    while (extra.length < rule.decoys) {
+      // 방해 글자는 단어에 없는 글자로만 고른다 (있는 글자면 정답이 헷갈림)
+      const c = pick('abcdefghijklmnoprstuwy'.split(''));
+      if (!word.en.includes(c) && !extra.includes(c)) extra.push(c);
+    }
+    return {
+      key: `order:${word.en}`,
+      prompt: `${word.emoji}  🔊`,
+      hint: level === 1 ? `"${word.ko}" 철자를 순서대로 거미줄로 잡아요` : '철자를 순서대로 거미줄로 잡아요',
+      answer: word.en,
+      choices: shuffle([...word.en.split(''), ...extra]),
+      decoys: extra,
+      review: `${word.emoji} ${word.en} (${word.ko})`,
+      speak: word.en,
+      spelling: true,
+    };
+  }
+
   A.English = {
     /**
      * 단계에 맞는 영어 문제 하나를 만든다.
      * 기본: 1단계 그림→단어 / 2단계 그림 또는 뜻→단어 / 3단계 뜻→단어 또는 빈칸 철자
      * pictureChoices: 모든 단계에서 단어→그림 (1단계만 한글 뜻 힌트)
+     * spelling: 철자 잇기 (알파벳을 순서대로 고르기, 단계별 길이 · 방해 글자)
      * @param {1|2|3} level
      * @param {QuestionOptions} [options]
      * @returns {Question}
      */
     make(level, options = {}) {
       const n = A.RULES.choicesByLevel[level];
+      if (options.spelling) return spellOrder(level);
       const word = pick(A.WORDS);
       if (options.pictureChoices) return choosePicture(word, n, level);
       if (level === 1) return chooseWord(word, 'emoji', n);

@@ -7,6 +7,7 @@
 * 🏙️ **빌딩 스윙:** 정답이 적힌 빌딩을 골라 거미줄 스윙으로 건너가기
 * 🚪 **문 통과:** 달리면서 정답 문(영어는 그림 문)이 있는 줄로 옮겨 통과하기
 * 🌆 **3D 문 통과:** 같은 규칙을 Three.js 3D로 — 도시 위 하늘 다리를 달리는 3인칭 시점
+* 🕸️ **철자 잇기:** 알파벳 블록을 순서대로 거미줄로 낚아채 영어 단어 완성하기
 
 배포: Vercel (Root Directory `web`) — [doc/guides/deploy-vercel.md](doc/guides/deploy-vercel.md)
 
