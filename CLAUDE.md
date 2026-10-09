@@ -17,9 +17,8 @@
 |---|---|
 | 놀이 방법 4종 (드론 잡기 · 빌딩 스윙 · 문 통과 · 3D 문 통과) | ✅ 완성, 모두 10문제 완주 테스트 통과 |
 | 히어로 6종 · 별 · 합류, 동적 연출, 폰 세로 안내 | ✅ |
-| 첫 커밋 `ea7dca8` (로컬) | ✅ |
-| **GitHub push** | ❌ 403 — 토큰에 저장소 쓰기 권한 없음. 사용자가 토큰 권한 수정 필요 (아래 6절) |
-| Vercel 배포 | ⏳ push 이후 사용자가 진행 |
+| GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
+| Vercel 배포 | ⏳ 사용자가 진행 중 (Root Directory `web`) |
 | **원어민 발음 파일 40개** | ⏳ 재생 구조 · 생성 스크립트 완료, **파일 출처 결정 대기** ([ADR-0004](doc/decisions/ADR-0004-pronunciation.md)) |
 | 실제 아이 · 실제 기기 플레이 테스트 | ⏳ 미실시 |
 
@@ -75,13 +74,17 @@ web/src/
 * push (토큰을 저장하지 않는 1회용 방식):
 
 ```powershell
-$env:ARAH_PAT = ([regex]::Match((Get-Content -LiteralPath "key.txt" -Raw), 'github_pat_[A-Za-z0-9_]+')).Value
+# key.txt 에는 classic(ghp_...) 또는 fine-grained(github_pat_...) 토큰이 들어 있을 수 있다 — 둘 다 인식
+$env:ARAH_PAT = ([regex]::Match((Get-Content -LiteralPath "key.txt" -Raw), '(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]+)')).Value
 try {
-  git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get || exit 0; echo username=csh1645; echo "password=$ARAH_PAT"; }; f' push -u origin main 2>&1 | ForEach-Object { "$_" -replace 'github_pat_[A-Za-z0-9_]+', '[REDACTED]' }
+  git -c credential.helper= -c 'credential.helper=!f() { test "$1" = get || exit 0; echo username=csh1645; echo "password=$ARAH_PAT"; }; f' push origin main 2>&1 | ForEach-Object { "$_" -replace '(github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9]+)', '[REDACTED]' }
 } finally { Remove-Item Env:ARAH_PAT -ErrorAction SilentlyContinue }
 ```
 
-* 403이 나면 토큰 권한 문제다: GitHub → Settings → Developer settings → Fine-grained tokens → 해당 토큰 → **Repository access에 `ARAH` 포함 + Permissions의 `Contents: Read and write`**. 같은 명령을 반복하지 말고 사용자에게 확인을 요청한다
+* 토큰 형식 확인은 값을 출력하지 말고 형식 · 길이만 본다 (예: `type=classic token, length=47`)
+* **403 (Permission denied):** 토큰 권한 문제. fine-grained 라면 Repository access 를 `Only select repositories → ARAH` 로, Permissions 의 `Contents: Read and write`. 같은 명령을 반복하지 말고 사용자에게 확인을 요청한다
+* **Invalid username or token:** 토큰이 바뀌었거나 만료됨. 위처럼 형식을 다시 확인한다
+* `main` 에 push 하면 Vercel 이 자동 배포한다 → 동작 확인이 끝난 변경만 push 한다
 
 ## 7. 사용자와 정한 것 (다시 묻지 말 것)
 
