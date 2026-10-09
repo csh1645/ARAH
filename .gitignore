@@ -1,0 +1,23 @@
+# 비밀 정보 — 절대 커밋하지 않는다 (doc/standards/coding-standards.md 6절)
+key.txt
+*.key
+.env
+.env.*
+
+# Claude Code 개인 설정 (launch.json 은 공유)
+.claude/*
+!.claude/launch.json
+
+# OS · 편집기
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# Vercel
+.vercel/

@@ -1,0 +1,120 @@
+:root {
+  --bg: #0b1026;
+  --panel: #171c3d;
+  --panel-2: #222859;
+  --text: #f5f6ff;
+  --muted: #aab0d6;
+  --accent: #e63946;
+  --accent-2: #4cc9f0;
+  --gold: #ffd166;
+  --ok: #06d6a0;
+  --radius: 16px;
+  --font: "Jua", "Malgun Gothic", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(circle at 50% 0%, #2a1650 0%, var(--bg) 60%) fixed;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+button { font-family: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+.screen { max-width: 960px; margin: 0 auto; padding: 20px 16px 40px; }
+.screen[hidden] { display: none; }
+
+h1 { margin: 0 0 6px; font-size: clamp(28px, 6vw, 44px); font-weight: normal; }
+h2 { margin: 28px 0 12px; font-size: 22px; font-weight: normal; color: var(--accent-2); }
+
+.menu-header { text-align: center; }
+.tagline { margin: 4px 0; color: var(--muted); font-size: 18px; }
+.tagline b { color: var(--gold); font-weight: normal; }
+.stars { display: inline-block; margin: 10px 0 0; padding: 6px 16px; border-radius: 999px; background: var(--panel); font-size: 20px; }
+
+/* 히어로 카드 */
+.hero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.hero-card {
+  display: flex; gap: 12px; align-items: center; text-align: left;
+  padding: 12px; border: 3px solid transparent; border-radius: var(--radius);
+  background: var(--panel); color: var(--text);
+  transition: transform .15s, border-color .15s;
+}
+.hero-card:hover:not(:disabled) { transform: translateY(-2px); }
+.hero-card.selected { border-color: var(--accent); background: var(--panel-2); }
+.hero-card.locked { opacity: .5; cursor: not-allowed; filter: grayscale(.8); }
+.hero-card canvas { flex: none; }
+.hero-info { display: flex; flex-direction: column; gap: 2px; }
+.hero-info strong { font-size: 20px; font-weight: normal; }
+.hero-universe { font-size: 14px; color: var(--accent-2); }
+.hero-ability { font-size: 15px; color: var(--muted); }
+
+/* 과목 · 단계 */
+.option-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.option {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 120px; padding: 12px 18px; border: 3px solid transparent; border-radius: var(--radius);
+  background: var(--panel); color: var(--text); font-size: 20px;
+}
+.option.selected { border-color: var(--accent-2); background: var(--panel-2); }
+.option-sub { font-size: 14px; color: var(--muted); }
+
+.primary, .secondary {
+  display: block; margin: 28px auto 0; padding: 16px 48px; border: none; border-radius: 999px;
+  font-size: 26px; color: #fff;
+}
+.primary { background: linear-gradient(135deg, var(--accent), #b5179e); box-shadow: 0 6px 0 #7a0f2f; }
+.primary:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a0f2f; }
+.secondary { background: var(--panel-2); }
+.controls { text-align: center; color: var(--muted); font-size: 15px; }
+
+/* 게임 */
+#play { max-width: none; padding: 0; position: relative; height: 100vh; height: 100dvh; overflow: hidden; }
+#game { position: relative; width: 100%; height: 100vh; height: 100dvh; }
+/* 3D 모드: Three.js 캔버스를 Phaser 캔버스(HUD) 뒤에 같은 크기로 깐다. 위치는 gate-view-3d.js 의 syncSize 가 맞춘다 */
+#game > canvas { position: relative; z-index: 1; }
+#game > canvas.three-layer { position: absolute; z-index: 0; pointer-events: none; }
+.quit {
+  position: absolute; left: 12px; bottom: 12px; z-index: 11; /* 가로 안내 화면 위에서도 누를 수 있게 */
+  min-height: 44px; padding: 8px 16px;
+  border: none; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 16px;
+}
+
+/* 폰 세로 안내 (표시 여부는 app.js 가 결정) */
+.rotate-hint {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px; background: rgba(11, 16, 38, .94); text-align: center; font-size: 26px;
+}
+.rotate-hint[hidden] { display: none; }
+.rotate-hint p { margin: 0; }
+.rotate-hint b { color: var(--gold); font-weight: normal; }
+.rotate-icon { font-size: 64px; animation: tilt 1.6s ease-in-out infinite; }
+.rotate-sub { font-size: 18px; color: var(--muted); }
+@keyframes tilt { 0%, 30% { transform: rotate(0deg); } 60%, 100% { transform: rotate(90deg); } }
+
+/* 결과 */
+#result { text-align: center; }
+.stats { display: grid; gap: 8px; max-width: 420px; margin: 16px auto 0; }
+.stats > div { display: flex; justify-content: space-between; padding: 10px 16px; border-radius: 12px; background: var(--panel); font-size: 20px; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; color: var(--gold); }
+.unlock { margin: 20px auto 0; max-width: 520px; padding: 12px; border: 3px dashed var(--gold); border-radius: var(--radius); }
+.unlock[hidden] { display: none; }
+.unlock-hero { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 20px; }
+.mistakes { list-style: none; max-width: 520px; margin: 0 auto; padding: 0; display: grid; gap: 8px; }
+.mistakes li { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-radius: 12px; background: var(--panel); font-size: 22px; }
+.mistakes li.empty { justify-content: center; color: var(--ok); }
+.speak { border: none; background: var(--panel-2); border-radius: 999px; padding: 4px 12px; font-size: 20px; }
+.result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.result-actions .primary, .result-actions .secondary { margin: 28px 0 0; }
+
+@media (max-width: 480px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .option { min-width: calc(50% - 5px); }
+}

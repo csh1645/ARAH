@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>거미 히어로 대작전</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <main id="app">
+    <!-- 메뉴 -->
+    <section id="menu" class="screen">
+      <header class="menu-header">
+        <h1>🕸️ 거미 히어로 대작전</h1>
+        <p class="tagline">차원 포털에서 쏟아지는 드론 중 <b>정답 드론</b>만 거미줄로 잡아라!</p>
+        <p class="stars">모은 별 ⭐ <span id="starCount">0</span></p>
+      </header>
+
+      <h2>1. 히어로를 골라요</h2>
+      <div id="heroes" class="hero-grid"></div>
+
+      <h2>2. 놀이 방법을 골라요</h2>
+      <div id="modes" class="option-row"></div>
+
+      <h2>3. 과목을 골라요</h2>
+      <div id="subjects" class="option-row"></div>
+
+      <h2>4. 단계를 골라요</h2>
+      <div id="levels" class="option-row"></div>
+
+      <button id="startBtn" type="button" class="primary">🚀 출동!</button>
+      <p class="controls">
+        🎯 드론 잡기 — PC: ← → 이동, 스페이스 또는 클릭 · 태블릿: 드론을 터치<br>
+        🏙️ 빌딩 스윙 — PC: 숫자 1~4, 또는 ← → 고르고 스페이스 · 태블릿: 빌딩을 터치<br>
+        🚪 문 통과 — PC: ← → 줄 이동, 스페이스 대시 · 태블릿: 문을 터치(한 번 더 누르면 대시)
+      </p>
+    </section>
+
+    <!-- 게임 -->
+    <section id="play" class="screen" hidden>
+      <div id="game"></div>
+      <button id="quitBtn" type="button" class="quit">그만하기</button>
+      <!-- 폰을 세로로 들면 게임이 작아지므로 가로로 돌리도록 안내하고 게임을 멈춘다 -->
+      <div id="rotateHint" class="rotate-hint" hidden>
+        <div class="rotate-icon">📱↻</div>
+        <p>폰을 <b>가로로</b> 돌려 주세요</p>
+        <p class="rotate-sub">돌리면 게임이 이어져요</p>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <section id="result" class="screen" hidden>
+      <h1 id="resultTitle"></h1>
+      <dl id="resultStats" class="stats"></dl>
+      <div id="unlock" class="unlock" hidden></div>
+      <h2>틀린 문제 다시 보기</h2>
+      <ul id="mistakes" class="mistakes"></ul>
+      <div class="result-actions">
+        <button id="retryBtn" type="button" class="primary">🔁 다시 하기</button>
+        <button id="menuBtn" type="button" class="secondary">🏠 메뉴로</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- 로드 순서 = 의존 순서 (doc/standards/coding-standards.md 1·2절) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+  <!-- Three.js: 전역 THREE 를 쓰는 UMD 빌드 (r160 부터는 모듈 전용이라 r149 로 고정, ADR-0005) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <!-- core -->
+  <script src="src/core/util.js"></script>
+  <script src="src/core/storage.js"></script>
+  <script src="src/core/speech.js"></script>
+  <!-- data -->
+  <script src="src/data/curriculum.js"></script>
+  <script src="src/data/heroes.js"></script>
+  <script src="src/data/words.js"></script>
+  <script src="src/data/audio-manifest.js"></script>
+  <!-- questions -->
+  <script src="src/questions/math.js"></script>
+  <script src="src/questions/english.js"></script>
+  <script src="src/questions/index.js"></script>
+  <!-- game: 기반 장면 → 뷰 → 모드들(등록) → 시작 진입점 -->
+  <script src="src/game/hero-art.js"></script>
+  <script src="src/game/round-scene.js"></script>
+  <script src="src/game/views/gate-view-2d.js"></script>
+  <script src="src/game/views/gate-view-3d.js"></script>
+  <script src="src/game/modes/catch-mode.js"></script>
+  <script src="src/game/modes/swing-mode.js"></script>
+  <script src="src/game/modes/gate-mode.js"></script>
+  <script src="src/game/modes/gate3d-mode.js"></script>
+  <script src="src/game/launcher.js"></script>
+  <!-- ui -->
+  <script src="src/ui/app.js"></script>
+</body>
+</html>
