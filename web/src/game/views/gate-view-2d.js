@@ -233,7 +233,7 @@
       g.clear();
       if (st.rescuing) {
         const o = this.s.hand();
-        g.lineStyle(3, 0xffffff, 0.95);
+        g.lineStyle(3, this.s.shotColor, 0.95);
         g.lineBetween(o.x, o.y, o.x, HUD_H);
       }
     }

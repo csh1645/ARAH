@@ -98,30 +98,57 @@
     if (!isUnlocked(A.findHero(state.heroId))) state.heroId = 'red';
     $('#starCount').textContent = state.stars;
 
+    // 히어로 도감: 팀별로 묶고, 팀 안에서는 합류 조건 순서로 보여 준다
+    const owned = A.HEROES.filter(isUnlocked).length;
+    const next = A.HEROES.filter((h) => !isUnlocked(h)).sort((a, b) => a.unlockStars - b.unlockStars)[0];
+    $('#heroCount').textContent = `${owned} / ${A.HEROES.length}`;
+    $('#nextHero').textContent = next ? `다음 합류: ${next.name} (⭐ ${next.unlockStars - state.stars}개 더)` : '모든 히어로를 모았어요! 🎉';
+
     const heroes = $('#heroes');
     heroes.replaceChildren();
-    for (const hero of A.HEROES) {
-      const unlocked = isUnlocked(hero);
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'hero-card' + (hero.id === state.heroId ? ' selected' : '') + (unlocked ? '' : ' locked');
-      card.disabled = !unlocked;
-      card.setAttribute('aria-pressed', String(hero.id === state.heroId));
-      card.appendChild(heroCanvas(hero, 72, 81));
-      const info = document.createElement('div');
-      info.className = 'hero-info';
-      info.innerHTML = '<strong></strong><span class="hero-universe"></span><span class="hero-ability"></span>';
-      info.querySelector('strong').textContent = hero.name;
-      info.querySelector('.hero-universe').textContent = hero.universe;
-      info.querySelector('.hero-ability').textContent = unlocked ? hero.abilityText : `🔒 ⭐ ${hero.unlockStars}개 모으면 합류`;
-      card.appendChild(info);
-      card.addEventListener('click', () => {
-        state.heroId = hero.id;
-        renderMenu();
-      });
-      heroes.appendChild(card);
+    for (const family of A.HERO_FAMILIES) {
+      const members = A.HEROES.filter((h) => A.findFamily(h).id === family.id).sort((a, b) => a.unlockStars - b.unlockStars);
+      if (!members.length) continue;
+      const head = document.createElement('div');
+      head.className = 'family-head';
+      head.innerHTML = '<strong></strong><span class="family-trait"></span><span class="family-count"></span>';
+      head.querySelector('strong').textContent = family.name;
+      head.querySelector('.family-trait').textContent = `${family.trait} · ${family.shot}`;
+      head.querySelector('.family-count').textContent = `${members.filter(isUnlocked).length} / ${members.length}`;
+      const grid = document.createElement('div');
+      grid.className = 'hero-grid';
+      for (const hero of members) grid.appendChild(heroCard(hero));
+      heroes.append(head, grid);
     }
 
+    renderOptions();
+  }
+
+  /** 히어로 카드 하나 (잠긴 히어로는 흐리게 + 합류 조건 표시) */
+  function heroCard(hero) {
+    const unlocked = isUnlocked(hero);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'hero-card' + (hero.id === state.heroId ? ' selected' : '') + (unlocked ? '' : ' locked');
+    card.disabled = !unlocked;
+    card.setAttribute('aria-pressed', String(hero.id === state.heroId));
+    card.appendChild(heroCanvas(hero, 72, 81));
+    const info = document.createElement('div');
+    info.className = 'hero-info';
+    info.innerHTML = '<strong></strong><span class="hero-universe"></span><span class="hero-ability"></span>';
+    info.querySelector('strong').textContent = hero.name;
+    info.querySelector('.hero-universe').textContent = hero.universe;
+    info.querySelector('.hero-ability').textContent = unlocked ? hero.abilityText : `🔒 ⭐ ${hero.unlockStars}개 모으면 합류`;
+    card.appendChild(info);
+    card.addEventListener('click', () => {
+      state.heroId = hero.id;
+      renderMenu();
+    });
+    return card;
+  }
+
+  /** 놀이 방법 · 과목 · 단계 선택 버튼 */
+  function renderOptions() {
     // 불러오지 못한 모드(예: Three.js CDN 실패 시 3D)는 메뉴에서 숨긴다.
     // Phaser 자체가 없으면 모든 모드가 미등록이므로 목록은 그대로 두고, 시작할 때 안내한다.
     const available = typeof Phaser === 'undefined' ? A.MODES : A.MODES.filter((m) => A.GAME_MODES[m.id]);

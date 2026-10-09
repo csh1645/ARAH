@@ -39,7 +39,7 @@
     }
 
     introText() {
-      return `${this.hero.name} 출동!\n알파벳을 순서대로 거미줄로 잡아요`;
+      return `${this.hero.name} 출동!\n알파벳을 순서대로 ${this.shotName}로 잡아요`;
     }
 
     questionOptions() {
@@ -215,7 +215,7 @@
       const speed = this.ab.webSpeed || 1;
       this.player.setFlipX(b.c.x < this.player.x - 10);
       const tip = { ...this.hand() };
-      this.web = { to: tip, color: 0xffffff };
+      this.web = { to: tip, color: this.shotColor };
       this.tweens.add({ targets: this.player, scaleY: 0.9, scaleX: 1.08, duration: 60, yoyo: true }); // 발사 반동
       this.tweens.add({
         targets: tip, x: b.c.x, y: b.c.y, duration: SHOOT_MS / speed,
@@ -231,7 +231,7 @@
       const slot = this.slots[this.idx];
       this.idx++;
       this.wrongCount = 0;
-      this.web = { to: b.c, color: 0xffffff };
+      this.web = { to: b.c, color: this.shotColor };
       b.c.setDepth(DEPTH.world + 2);
       this.tweens.add({
         targets: b.c, x: slot.x, y: slot.y, scale: 0.85, duration: PULL_MS / (this.ab.webSpeed || 1), ease: 'Cubic.InOut',

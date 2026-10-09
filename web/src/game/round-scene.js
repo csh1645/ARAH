@@ -77,6 +77,10 @@
       this.onEnd = data.onEnd;
       this.hero = data.opts.hero;
       this.ab = this.hero.ability || {};
+      // 팀마다 쏘는 줄의 이름 · 색이 다르다 (거미줄, 레이저 줄 …). 안내 문구와 줄 그리기에 쓴다
+      const family = A.findFamily(this.hero);
+      this.shotName = family.shot;
+      this.shotColor = family.color;
     }
 
     create() {
@@ -384,7 +388,7 @@
       return this.player;
     }
 
-    /** 거미줄이 나가는 손 위치. 히어로가 왼쪽을 보면 좌우가 바뀐다. */
+    /** 줄(거미줄 · 레이저 줄 등)이 나가는 손 위치. 히어로가 왼쪽을 보면 좌우가 바뀐다. */
     hand() {
       const dir = this.player.flipX ? -1 : 1;
       return { x: this.player.x + dir * GAME.HAND_OFFSET.x, y: this.player.y + GAME.HAND_OFFSET.y };

@@ -39,7 +39,7 @@
     }
 
     introText() {
-      return `${this.hero.name} 출동!\n정답 드론에 거미줄을 쏘세요`;
+      return `${this.hero.name} 출동!\n정답 드론에 ${this.shotName}을 쏘세요`;
     }
 
     createWorld() {
@@ -188,7 +188,7 @@
       const pts = this.awardCorrect(d.c.x, d.c.y);
 
       const wg = this.add.graphics();
-      wg.lineStyle(2, 0xffffff, 0.95);
+      wg.lineStyle(2, this.shotColor, 0.95);
       for (let i = 0; i < 8; i++) {
         const a = (i * Math.PI) / 4;
         wg.lineBetween(0, 0, Math.cos(a) * (d.w / 2 + 6), Math.sin(a) * (d.h / 2 + 6));
@@ -292,9 +292,9 @@
       g.clear();
       const o = this.hand();
       for (const w of this.webs) {
-        g.lineStyle(2, 0xffffff, 0.85);
+        g.lineStyle(2, this.shotColor, 0.85);
         g.lineBetween(o.x, o.y, w.x, w.y);
-        g.fillStyle(0xffffff, 1);
+        g.fillStyle(this.shotColor, 1);
         g.fillCircle(w.x, w.y, r > 14 ? 9 : 5);
       }
     }

@@ -238,7 +238,7 @@
 
       // 복귀할 때 위로 쏘는 거미줄
       const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-      this.webLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xffffff }));
+      this.webLine = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: this.s.shotColor })); // 팀별 줄 색
       this.webLine.visible = false;
       this.scene3.add(this.webLine);
     }

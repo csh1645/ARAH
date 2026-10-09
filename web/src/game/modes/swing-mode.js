@@ -45,7 +45,7 @@
     }
 
     introText() {
-      return `${this.hero.name} 출동!\n정답 빌딩으로 거미줄 스윙!`;
+      return `${this.hero.name} 출동!\n정답 빌딩으로 ${this.shotName} 스윙!`;
     }
 
     createWorld() {
@@ -54,7 +54,7 @@
       this.keyboardUsed = false; // 키보드를 쓰기 전에는 선택 테두리를 숨긴다 (정답 힌트로 오해하지 않게)
       this.swinging = false;
       this.anchor = null; // 거미줄이 걸린 지점. 값이 있는 동안 손에서 이 지점까지 줄을 그린다
-      this.webColor = 0xffffff;
+      this.webColor = this.shotColor;
       this.landed = null;
 
       this.drawSky();
@@ -227,7 +227,7 @@
      */
     swingTo(b, earned) {
       this.swinging = true;
-      this.webColor = 0xffffff;
+      this.webColor = this.shotColor;
       this.anchor = { x: b.c.x, y: b.anchorY };
       this.player.setFlipX(false);
 
@@ -273,7 +273,7 @@
       b.text.setColor('#ff5c5c');
       b.c.setAlpha(0.4);
       this.penalize();
-      this.webColor = 0xffffff;
+      this.webColor = this.shotColor;
       this.anchor = { x: b.c.x, y: b.anchorY };
 
       const y0 = this.player.y;
