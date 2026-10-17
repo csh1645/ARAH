@@ -2,6 +2,10 @@
 
 2026-10-17 부터 Vite 로 실행 · 빌드합니다 ([ADR-0008](../decisions/ADR-0008-vite-content-pipeline.md)). **Node.js LTS** 가 필요합니다.
 
+> **Windows PowerShell 에서 `npm : 이 시스템에서 스크립트를 실행할 수 없으므로 … npm.ps1 …` 오류가 나면**
+> PowerShell 보안 정책이 `npm.ps1` 을 막는 것입니다. 정책은 바꾸지 말고 **`npm` 대신 `npm.cmd`** 를 쓰세요 (예: `npm.cmd run dev`).
+> 명령은 **`ARAH-vite` 폴더**(package.json 이 있는 곳)에서 실행합니다. Node.js 를 막 설치했다면 터미널을 새로 엽니다.
+
 ## 처음 한 번
 
 ```bash
