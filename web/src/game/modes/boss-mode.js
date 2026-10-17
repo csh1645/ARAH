@@ -1,7 +1,7 @@
 /**
  * @file 👾 보스 배틀 모드 (연속 정답). 체력바가 있는 거대 악당 로봇과 싸운다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.6 보스 배틀)
  *
  * 판정: 정답 버튼 → 팀 공격으로 보스 체력 -1 (3콤보 이상이면 크리티컬 -2)
@@ -31,7 +31,6 @@
   // ----- 규칙 · 연출 -----
   const BOSS_HP = 8;
   const CRIT_COMBO = 3; // 이 콤보부터 크리티컬 (데미지 2)
-  const CHARGE_SEC_BY_LEVEL = { 1: 13, 2: 12, 3: 11, 4: 10, 5: 10, 6: 9 }; // 보스 공격까지 시간
   const WRONG_CHARGE = 0.3; // 오답이면 충전이 이만큼 늘어난다
   const SHOT_MS = 200;
   const BOSSES = [
@@ -148,7 +147,7 @@
       this.buttons = q.choices.map((label, i) => this.makeButton(label, label === q.answer, x0 + i * (bw + 16), bw, i, !!q.pictureChoices));
       const decoy = this.decoyIndex(q); // buttons[i] 는 q.choices[i] 와 같은 순서
       if (decoy >= 0) this.disableButton(this.buttons[decoy]);
-      this.chargeMs = this.timeLimitMs(CHARGE_SEC_BY_LEVEL[this.opts.level]);
+      this.chargeMs = this.timeLimitMs(A.RULES.bossChargeSecByLevel[this.opts.level]);
       this.charge = 0;
       this.busy = false;
     }

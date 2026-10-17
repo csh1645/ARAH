@@ -1,7 +1,7 @@
 /**
  * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(팀 스타 · 히어로 합류 · 마지막 선택) 관리.
  *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review,
- *       runIntroduced(새 놀이 히어로 러너를 한 번 먼저 골라 뒀는지)
+ *       runIntroduced(새 놀이 히어로 러너를 한 번 먼저 골라 뒀는지), levelScheme(저장된 단계 값의 체계: 2 = 1~12단계)
  * @layer ui
  * @depends A.storage, A.speak, A.MODES, A.SUBJECTS, A.LEVELS, A.RULES, A.HEROES, A.findHero, A.drawHero,
  *          A.findFamily, A.heroLine, A.Sfx, A.GAME_MODES, A.startGame
@@ -14,6 +14,8 @@
 
   const $ = (sel) => document.querySelector(sel);
   const store = A.storage;
+  /** 저장된 단계 값의 체계 번호. 2 = 1~12단계(초1~중3). 1 = 예전 1~6단계 */
+  const LEVEL_SCHEME = 2;
 
   /** 메뉴 선택 상태. 게임 시작 시 저장해서 다음 실행 때 그대로 복원한다. */
   const state = {
@@ -23,6 +25,12 @@
     subject: store.get('subject', 'add'),
     level: store.get('level', 1),
   };
+  // 단계 체계가 바뀌었다 (1~6 → 1~12, ADR-0007): 예전에 저장한 단계는 같은 수준의 새 단계로 한 번만 옮긴다
+  if (store.get('levelScheme', 1) < LEVEL_SCHEME) {
+    state.level = A.LEGACY_LEVEL_MAP[state.level] || 1;
+    store.set('level', state.level);
+    store.set('levelScheme', LEVEL_SCHEME);
+  }
   // 저장값 검증: 목록에 없는 값(예전 버전 · 손상된 값)은 기본값으로 (보기 수 계산 오류 방지)
   if (!A.LEVELS.some((l) => l.id === state.level)) state.level = 1;
   state.mode = (A.MODE_ALIASES && A.MODE_ALIASES[state.mode]) || state.mode; // 예: 3D 문 통과 → 문 통과
@@ -247,7 +255,7 @@
     const levels = $('#levels');
     levels.replaceChildren(
       ...A.LEVELS.map((l) =>
-        optionButton(l.label, l.desc, l.id === state.level, () => {
+        optionButton(l.label, `추천 ${l.grade}`, l.id === state.level, () => {
           state.level = l.id;
           renderMenu();
         })),

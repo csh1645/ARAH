@@ -17,7 +17,8 @@
  * @property {string}   [speak] 정답 시 읽어 줄 영어 (영어 문제만)
  * @property {boolean}  [pictureChoices] 보기가 그림(이모지)이면 true. 화면은 보기 글자를 크게 그린다
  * @property {boolean}  [spelling] 철자 잇기 문제. choices 는 섞인 알파벳(중복 가능), answer 는 완성할 단어
- * @property {string[]} [decoys]   철자 잇기의 방해 글자
+ * @property {string[]} [decoys]   철자 잇기의 방해 글자 (문장 만들기면 방해 단어)
+ * @property {string[]} [tokens]   문장 만들기(철자 잇기 5단계~): 순서대로 고를 단어들. 있으면 블록이 알파벳 대신 단어
  */
 
 /**
@@ -32,13 +33,14 @@
   /**
    * 과목과 단계에 맞는 문제 하나를 만든다.
    * @param {string} subject 과목 id (A.SUBJECTS 참고)
-   * @param {1|2|3} level 단계
+   * @param {number} level 단계 1~12
    * @param {QuestionOptions} [options] 모드가 원하는 문제 형식
    * @returns {Question}
    */
   A.makeQuestion = function (subject, level, options = {}) {
     // 철자 잇기처럼 영어 전용 형식을 요청하면 과목 선택과 상관없이 영어 문제를 낸다
     if (subject === 'eng' || options.spelling) return A.English.make(level, options);
+    // 'mix' 는 수학 과목끼리 섞는다 (□와 방정식 포함, questions/math.js MIX_OPS)
     return A.MathQ.make(subject, level);
   };
 })(window.ARAH);

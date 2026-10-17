@@ -2,7 +2,7 @@
  * @file 🕸️ 철자 잇기 모드 (영어 전용). 그림 · 발음으로 단어를 알려 주고,
  *       떠다니는 알파벳 블록을 순서대로 거미줄로 낚아채 빈칸으로 끌어와 단어를 완성한다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
+ * @depends A.RoundScene, A.GAME, A.util, A.speak, A.English, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.4 철자 잇기)
  *
  * 판정: 다음 순서의 글자 → 거미줄로 끌어와 빈칸에 채움 / 모두 채우면 정답
@@ -10,6 +10,8 @@
  *       별(한 번에 맞힌 문제) 대상에서만 빠진다. HINT_AFTER 번 틀리면 다음 글자를 반짝여 알려 준다.
  * 조작: 블록 터치 · 클릭, 또는 키보드로 알파벳 입력. 상단 문제를 누르면 발음을 다시 들려준다.
  * 근접 팀(거인 · 표범)은 줄 없이 블록까지 뛰어올라 쳐서 빈칸으로 날려 보낸다 (기반 meleeTo).
+ * 5단계부터는 "문장 만들기": 블록이 알파벳 대신 단어(q.tokens)이고, 방해 블록은 그 문법의 헷갈리는 형태다.
+ *   블록 · 빈칸 너비는 단어 길이에 맞추고, 키보드는 그 글자로 시작하는 단어 블록을 고른다.
  */
 (function (A) {
   'use strict';
@@ -24,7 +26,12 @@
   const SLOT_W = 62;
   const SLOT_GAP = 8;
   const FIELD = { left: 110, right: 850, top: 285, bottom: 470 }; // 알파벳 블록이 떠다니는 영역
+  const WORD_FIELD = { left: 90, right: 870, top: 262, bottom: 482 }; // 단어 블록 영역 (블록이 넓어 조금 더 크게)
   const BLOCK = 68;
+  const WORD_BLOCK_H = 56;
+  const WORD_FONT = 32; // 단어 블록 글자 크기 (px). 너비 추정: 글자 수 × CHAR_W + 여백
+  const CHAR_W = 18;
+  const SLOT_ROW_MAX = W - 40; // 빈칸 줄 최대 너비 (넘치면 전체를 줄인다)
   const BLOCK_COLORS = [0xe63946, 0x1d4ed8, 0x06d6a0, 0xff9f1c, 0x9d4edd, 0xff4fa3];
 
   // ----- 연출 · 규칙 -----
@@ -40,8 +47,9 @@
     }
 
     introText() {
-      if (this.attackStyle.melee) return `${this.hero.name} 출동!\n알파벳을 순서대로 쳐서 날려요`;
-      return `${this.hero.name} 출동!\n알파벳을 순서대로 ${this.shotName}로 잡아요`;
+      const what = A.English.usesWordBlocks(this.opts.level) ? '단어를 순서대로' : '알파벳을 순서대로';
+      if (this.attackStyle.melee) return `${this.hero.name} 출동!\n${what} 쳐서 날려요`;
+      return `${this.hero.name} 출동!\n${what} ${this.shotName}로 잡아요`;
     }
 
     questionOptions() {
@@ -89,7 +97,10 @@
     }
 
     typeLetter(k) {
-      const b = this.blocks.find((x) => !x.used && x.ch === k);
+      // 단어 블록이면 그 글자로 시작하는 단어 (다음 순서 단어를 우선)
+      const starts = (x) => !x.used && (this.wordMode ? x.ch.toLowerCase().startsWith(k) : x.ch === k);
+      const expected = this.parts[this.idx];
+      const b = this.blocks.find((x) => starts(x) && x.ch === expected) || this.blocks.find(starts);
       if (b) this.pick(b);
       else this.wrong(); // 화면에 없는 글자를 친 경우
     }
@@ -102,25 +113,36 @@
 
     // ---------- 문제 배치 ----------
 
+    /** 블록 · 빈칸 하나의 너비 (알파벳은 고정, 단어는 글자 수에 맞춤) */
+    partWidth(part) {
+      return this.wordMode ? Math.max(SLOT_W, Math.round(part.length * CHAR_W * this.fit + 26)) : SLOT_W;
+    }
+
     startWave(q) {
       this.word = q.answer;
+      this.wordMode = !!q.tokens; // 문장 만들기
+      this.parts = q.tokens || q.answer.split('');
       this.keyQueue = [];
       this.idx = 0;
       this.wrongCount = 0;
       this.busy = false;
 
-      // 빈칸
-      const n = this.word.length;
-      const total = n * SLOT_W + (n - 1) * SLOT_GAP;
-      const x0 = W / 2 - total / 2 + SLOT_W / 2;
-      this.slots = this.word.split('').map((_, i) => {
-        const x = x0 + i * (SLOT_W + SLOT_GAP);
+      // 빈칸: 너비 합이 화면을 넘으면 전체를 같은 비율로 줄인다 (긴 문장)
+      this.fit = 1;
+      const rowW = () => this.parts.reduce((sum, p) => sum + this.partWidth(p), 0) + (this.parts.length - 1) * SLOT_GAP;
+      if (rowW() > SLOT_ROW_MAX) this.fit = SLOT_ROW_MAX / rowW();
+      let x = W / 2 - rowW() / 2;
+      const sh = this.wordMode ? WORD_BLOCK_H : SLOT_W;
+      this.slots = this.parts.map((p) => {
+        const w = this.partWidth(p);
+        const cx = x + w / 2;
+        x += w + SLOT_GAP;
         const g = this.add.graphics().setDepth(DEPTH.world);
         g.fillStyle(0x111633, 0.85);
-        g.fillRoundedRect(x - SLOT_W / 2, SLOT_Y - SLOT_W / 2, SLOT_W, SLOT_W, 10);
+        g.fillRoundedRect(cx - w / 2, SLOT_Y - sh / 2, w, sh, 10);
         g.lineStyle(3, 0x4cc9f0, 0.9);
-        g.strokeRoundedRect(x - SLOT_W / 2, SLOT_Y - SLOT_W / 2, SLOT_W, SLOT_W, 10);
-        return { x, y: SLOT_Y, g };
+        g.strokeRoundedRect(cx - w / 2, SLOT_Y - sh / 2, w, sh, 10);
+        return { x: cx, y: SLOT_Y, w, h: sh, g };
       });
       this.slotHl = this.add.graphics().setDepth(DEPTH.world + 1);
       this.tweens.add({ targets: this.slotHl, alpha: 0.35, duration: 450, yoyo: true, repeat: -1 });
@@ -129,16 +151,18 @@
       // 알파벳 블록: 영역을 격자로 나누고 칸마다 조금씩 흩어 놓는다 (겹치지 않으면서 자연스럽게)
       const { rand, shuffle } = A.util;
       const k = q.choices.length;
-      const cols = Math.min(k, 6);
+      const field = this.wordMode ? WORD_FIELD : FIELD;
+      const cols = Math.min(k, this.wordMode ? 4 : 6);
       const rows = Math.ceil(k / cols);
-      const cellW = (FIELD.right - FIELD.left) / cols;
-      const cellH = (FIELD.bottom - FIELD.top) / rows;
+      const cellW = (field.right - field.left) / cols;
+      const cellH = (field.bottom - field.top) / rows;
+      const jitter = this.wordMode ? 0.05 : 0.15; // 넓은 단어 블록은 덜 흩어 겹치지 않게
       const cells = [];
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           cells.push({
-            x: FIELD.left + cellW * (c + 0.5) + rand(-cellW * 0.15, cellW * 0.15),
-            y: FIELD.top + cellH * (r + 0.5) + rand(-10, 10),
+            x: field.left + cellW * (c + 0.5) + rand(-cellW * jitter, cellW * jitter),
+            y: field.top + cellH * (r + 0.5) + rand(-6, 6),
           });
         }
       }
@@ -156,13 +180,16 @@
 
     makeBlock(ch, pos, i) {
       const c = this.add.container(pos.x, pos.y).setDepth(DEPTH.world);
+      const w = this.wordMode ? this.partWidth(ch) + 6 : BLOCK;
+      const h = this.wordMode ? WORD_BLOCK_H : BLOCK;
       const g = this.add.graphics();
       g.fillStyle(BLOCK_COLORS[i % BLOCK_COLORS.length], 1);
-      g.fillRoundedRect(-BLOCK / 2, -BLOCK / 2, BLOCK, BLOCK, 14);
+      g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
       g.lineStyle(4, 0xffffff, 0.85);
-      g.strokeRoundedRect(-BLOCK / 2, -BLOCK / 2, BLOCK, BLOCK, 14);
+      g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+      const size = this.wordMode ? Math.round(WORD_FONT * this.fit) : 46;
       const t = this.add
-        .text(0, 2, ch, { fontFamily: FONT, fontSize: '46px', color: '#ffffff', stroke: '#000000', strokeThickness: 5 })
+        .text(0, 2, ch, { fontFamily: FONT, fontSize: `${size}px`, color: '#ffffff', stroke: '#000000', strokeThickness: 5 })
         .setOrigin(0.5);
       c.add([g, t]);
       c.setScale(0);
@@ -172,14 +199,14 @@
         targets: c, y: pos.y - 7, duration: A.util.rand(800, 1300), delay: A.util.rand(0, 600),
         yoyo: true, repeat: -1, ease: 'Sine.InOut',
       });
-      return { c, g, t, ch, used: false };
+      return { c, g, t, ch, w, h, used: false };
     }
 
     blockDecoy(b) {
       b.used = true;
       b.c.setAlpha(0.3);
       b.g.lineStyle(5, 0x9a9a9a, 1);
-      b.g.lineBetween(-BLOCK / 2 + 8, -BLOCK / 2 + 8, BLOCK / 2 - 8, BLOCK / 2 - 8);
+      b.g.lineBetween(-b.w / 2 + 8, -b.h / 2 + 8, b.w / 2 - 8, b.h / 2 - 8);
     }
 
     clearWave() {
@@ -200,11 +227,11 @@
       const s = this.slots[this.idx];
       if (!s) return;
       g.lineStyle(5, 0xffd166, 1);
-      g.strokeRoundedRect(s.x - SLOT_W / 2 - 5, s.y - SLOT_W / 2 - 5, SLOT_W + 10, SLOT_W + 10, 12);
+      g.strokeRoundedRect(s.x - s.w / 2 - 5, s.y - s.h / 2 - 5, s.w + 10, s.h + 10, 12);
     }
 
     blockAt(x, y) {
-      return this.blocks.find((b) => !b.used && Math.abs(x - b.c.x) <= BLOCK / 2 + 8 && Math.abs(y - b.c.y) <= BLOCK / 2 + 8) || null;
+      return this.blocks.find((b) => !b.used && Math.abs(x - b.c.x) <= b.w / 2 + 8 && Math.abs(y - b.c.y) <= b.h / 2 + 8) || null;
     }
 
     // ---------- 팀 공격으로 고르기 ----------
@@ -216,14 +243,14 @@
     pick(b) {
       if (!this.waveActive || this.busy || !b || b.used) return;
       this.busy = true;
-      const expected = this.word[this.idx];
+      const expected = this.parts[this.idx];
       const judge = () => {
         this.attackHit(b.c.x, b.c.y);
         if (b.ch === expected) this.pull(b);
         else this.snap(b);
       };
       if (this.attackStyle.melee) { // 근접 팀: 블록 아래까지 뛰어올라 친다
-        this.meleeTo(() => ({ x: b.c.x, y: b.c.y + BLOCK / 2 + 34 }), judge, { land: { x: W / 2, y: HERO_Y } });
+        this.meleeTo(() => ({ x: b.c.x, y: b.c.y + b.h / 2 + 34 }), judge, { land: { x: W / 2, y: HERO_Y } });
         return;
       }
       const speed = (this.ab.webSpeed || 1) * this.attackStyle.speed;
@@ -253,7 +280,7 @@
           this.burster.explode(10, slot.x, slot.y);
           this.updateSlotHl();
           this.busy = false;
-          if (this.idx >= this.word.length) this.complete();
+          if (this.idx >= this.parts.length) this.complete();
           else this.flushKeys();
         },
       });
@@ -284,7 +311,7 @@
     }
 
     hintNext() {
-      const next = this.blocks.find((b) => !b.used && b.ch === this.word[this.idx]);
+      const next = this.blocks.find((b) => !b.used && b.ch === this.parts[this.idx]);
       if (!next) return;
       this.tweens.add({ targets: next.c, scale: 1.25, duration: 180, yoyo: true, repeat: 2 });
       this.burster.explode(8, next.c.x, next.c.y);

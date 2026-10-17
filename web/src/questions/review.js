@@ -26,7 +26,7 @@
   const STORE_KEY = 'review';
 
   /** 저장할 때 남길 문제 필드 (화면 전용 · 상태 필드는 빼고 저장) */
-  const KEEP = ['key', 'subject', 'prompt', 'hint', 'answer', 'choices', 'review', 'speak', 'speakOnStart', 'pictureChoices', 'spelling', 'decoys'];
+  const KEEP = ['key', 'subject', 'prompt', 'hint', 'answer', 'choices', 'review', 'speak', 'speakOnStart', 'pictureChoices', 'spelling', 'decoys', 'tokens'];
 
   const REVIEW_TAG = '📒 복습 문제 · ';
   const load = () => A.storage.get(STORE_KEY, {}) || {};

@@ -64,6 +64,11 @@
   const COMBO_STEP = 20; // 콤보 1 늘 때마다 추가 점수
   const INTRO_MS = 1500;
   const RECENT_LIMIT = 8; // 최근 문제 몇 개와 겹치지 않게 할지
+  const Q_FONT = 46; // 문제 글자 크기 (긴 문장 · 식은 fitText 가 Q_FONT_MIN 까지 줄인다)
+  const Q_FONT_MIN = 24;
+  const HINT_FONT = 18;
+  const HINT_FONT_MIN = 13;
+  const TEXT_SIDE_MARGIN = 150; // 문제 칸 좌우 여백 (왼쪽 하트 · 오른쪽 점수 자리)
 
   // ----- 동적 연출 -----
   // 화면이 계속 살아 움직이면 아이의 시선이 게임에 머문다. 단, 문제 글자를 가리거나 너무 번쩍이지 않게 약하게 쓴다.
@@ -194,8 +199,7 @@
       this.q = q;
       this.qIndex++;
 
-      this.qText.setText(q.prompt);
-      this.hintText.setText(q.hint);
+      this.setPromptText(q.prompt, q.hint);
       this.qText.setScale(0.6);
       this.tweens.add({ targets: this.qText, scale: 1, duration: 300, ease: 'Back.Out' });
       this.updateHud();
@@ -273,6 +277,30 @@
       if (Math.random() < SAY_WRONG_CHANCE) this.heroSay('wrong'); // 탓하지 않고 다시 해 보자는 격려
       if (!loseHeart) return;
       this.tweens.add({ targets: this.heartText, x: { from: 12, to: 24 }, duration: 50, yoyo: true, repeat: 3, onComplete: () => this.heartText.setX(18) });
+    }
+
+    /**
+     * 상단 문제 칸과 안내 문구를 바꾼다. 긴 문장 · 식도 한 줄에 들어오게 글자 크기를 맞춘다.
+     * @param {string} prompt
+     * @param {string} [hint]
+     */
+    setPromptText(prompt, hint = '') {
+      this.qText.setText(prompt);
+      this.hintText.setText(hint);
+      this.fitText(this.qText, Q_FONT, Q_FONT_MIN);
+      this.fitText(this.hintText, HINT_FONT, HINT_FONT_MIN);
+    }
+
+    /**
+     * 글자가 화면 폭을 넘으면 글자 크기를 줄여 한 줄에 맞춘다 (높은 단계의 문장 · 식).
+     * @param {Phaser.GameObjects.Text} t
+     * @param {number} size 기본 글자 크기 px
+     * @param {number} min 최소 글자 크기 px
+     */
+    fitText(t, size, min) {
+      t.setFontSize(size);
+      const maxW = W - TEXT_SIDE_MARGIN * 2;
+      if (t.width > maxW) t.setFontSize(Math.max(min, Math.floor((size * maxW) / t.width)));
     }
 
     // ---------- 동적 연출 (모든 모드 공통) ----------
@@ -770,12 +798,12 @@
         fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#000000', strokeThickness: 5,
       });
       this.add.rectangle(W / 2, GAME.HUD_H / 2, W, GAME.HUD_H, 0x000000, 0.45).setDepth(DEPTH.hud);
-      this.qText = this.add.text(W / 2, 40, '', style(46, '#ffffff')).setOrigin(0.5).setDepth(DEPTH.hud);
+      this.qText = this.add.text(W / 2, 40, '', style(Q_FONT, '#ffffff')).setOrigin(0.5).setDepth(DEPTH.hud);
       // 문제를 누르면 영어 발음을 다시 들려준다 (듣기 문제 · 영어 문제 공통)
       this.qText.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
         if (this.q && this.q.speak) A.speak(this.q.speak);
       });
-      this.hintText = this.add.text(W / 2, 80, '', style(18, '#ffd166')).setOrigin(0.5).setDepth(DEPTH.hud);
+      this.hintText = this.add.text(W / 2, 80, '', style(HINT_FONT, '#ffd166')).setOrigin(0.5).setDepth(DEPTH.hud);
       this.heartText = this.add.text(18, 12, '', style(26, '#ffffff')).setDepth(DEPTH.hud);
       this.progressText = this.add.text(18, 56, '', style(20, '#cccccc')).setDepth(DEPTH.hud);
       this.scoreText = this.add.text(W - 18, 12, '', style(26, '#ffffff')).setOrigin(1, 0).setDepth(DEPTH.hud);

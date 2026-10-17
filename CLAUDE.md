@@ -5,7 +5,7 @@
 
 ## 1. 프로젝트 한눈에
 
-* **무엇:** "히어로 대작전" — 초등 저학년 아이 한 명을 위한 수학 사칙연산 · 영어(단어 · 철자 · 듣기) 학습 액션 웹게임. 1~6단계 (화면에 학년 표시 없음)
+* **무엇:** "히어로 대작전" — 아이 한 명을 위한 수학 · 영어 학습 액션 웹게임. **1~12단계 = 초1 ~ 중3** (단계 버튼에 "추천 학년" 표시, [ADR-0007](doc/decisions/ADR-0007-levels-elementary-to-middle.md))
 * **테마:** 스파이더맨 · 어벤저스 느낌의 **히어로 연합 8팀 × 6명 = 48명**, 팀 스타로 한 명씩 합류. 원조를 떠올리게 하는 오마주 디자인이되 **공식 이름 · 로고 · 공식 이미지 파일은 절대 쓰지 않는다** ([ADR-0002](doc/decisions/ADR-0002-original-characters.md))
 * **스택:** 순수 HTML/JS, 빌드 도구 없음. Phaser 3.80.1(2D) + Three.js r149(3D, 문 통과 3D 모드) — 둘 다 CDN, 버전 고정
 * **배포:** GitHub `csh1645/ARAH` `main` → Vercel 자동 배포, **Root Directory = `web`** ([deploy-vercel.md](doc/guides/deploy-vercel.md))
@@ -19,7 +19,8 @@
 | 빌딩 스윙: 팀별 건너가기 8종 (`game/travels.js`) | ✅ |
 | 팀별 공격 모양 8종 (`game/attacks.js`): 빔 · 방패 던지기 · 번개 · 바위 · 화살 · 구슬 · 발톱, 보스전 거인 점프 · 표범 달려들기 · 방패 복귀 | ✅ |
 | 히어로 48명 · 팀 스타 · 한 번에 한 명 합류 · 기존 진행 이전 | ✅ (예전 별 → 거미 스타, `ui/app.js` LEGACY_UNLOCKS) |
-| 1~6단계 수학 · 영어 123단어 · 듣기 문제 | ✅ |
+| 1~12단계(초1~중3): 수학 자연수 → 분수 · 소수 → 정수 → 다항식 → 제곱근 + 새 과목 □와 방정식, 영어 단어 → 어구 → 문장 빈칸(학년별 문법), 철자 잇기 5단계~ 문장 만들기 | ✅ 2026-10-17 (생성기 12만 문제 검증), 예전 단계 저장값 자동 이전 |
+| **문장 · 어구 원어민 발음 파일** (사용자: "읽을 때 자연스럽지 않다") | ⏳ 지금은 단어 123개만 파일, 문장 84 · 어구 24는 기기 음성(TTS). `tools/audio` 생성기를 문장까지 확장해 만들 것 |
 | 오답 복습 노트 (간격 반복, `questions/review.js`) | ✅ |
 | 발음 파일 123개 (전 단어) | ✅ kokoro-js `af_heart`, 총 약 4MB, 디코딩 검증 완료 |
 | 효과음 · 배경음 (팀별 발사음 8종 · 상황음 13종 · 배경음 2곡) | ✅ `core/sfx.js` Web Audio 합성, 모드는 `this.sfx()` · `this.shotSfx()` 만 호출 |
@@ -44,9 +45,9 @@
 
 ```
 web/src/
-├─ core/       util(랜덤 · bezier2) · storage · speech   (의존 없음)
-├─ data/       curriculum(단계 · 규칙 · 놀이 목록) · heroes(팀 · 48명) · words · audio-manifest   (값만, 로직 없음)
-├─ questions/  math · english · index · review(복습 노트)   (엔진 독립: Phaser/DOM 금지)
+├─ core/       util(랜덤 · bezier2) · storage · speech · sfx   (의존 없음)
+├─ data/       curriculum(단계 · 규칙 · 놀이 목록) · heroes(팀 · 48명) · hero-lines · words · sentences(어구 · 문장) · audio-manifest   (값만, 로직 없음)
+├─ questions/  math-values(분수 · 소수 · 다항식 · 제곱근 표기) · math · english · index · review(복습 노트)   (엔진 독립: Phaser/DOM 금지)
 ├─ game/       round-scene(공통 규칙 · 능력 계산 · 소리 · 공격 그리기) · travels(팀별 이동) · attacks(팀별 공격) · modes/(놀이 6종) · views/(문 통과 2D·3D) · hero-art · launcher
 └─ ui/         app.js (메뉴 · 결과 · 모바일 처리)
 ```
@@ -114,11 +115,14 @@ try {
 * **403 (Permission denied):** 토큰 권한 문제. fine-grained 라면 Repository access 를 `Only select repositories → ARAH` 로, Permissions 의 `Contents: Read and write`. 같은 명령을 반복하지 말고 사용자에게 확인을 요청한다
 * **Invalid username or token:** 토큰이 바뀌었거나 만료됨. 위처럼 형식을 다시 확인한다
 * `main` 에 push 하면 Vercel 이 자동 배포한다 → 동작 확인이 끝난 변경만 push 한다
+* **push 명령은 프로젝트 루트에서 실행한다** (`key.txt` 를 상대 경로로 읽음. 다른 폴더에서 실행하면 "Invalid username or token" 이 난다)
 
 ## 7. 사용자와 정한 것 (다시 묻지 말 것)
 
 * 웹 우선, 고도화 시 MVP 결과로 플랫폼 결정 ([ADR-0001](doc/decisions/ADR-0001-web-first.md))
 * 히어로는 원조 느낌이 강해야 함 (재미 우선) — 단 공식 이름 · 로고 금지, 배포 주소는 가족 공유 범위
+* 단계는 1~12(초1~중3), 버튼에 추천 학년 표시 (2026-10-17). 학년이 올라가도 놀이 수는 늘리지 않음 (에이전트 판단 위임)
+* push 는 테스트가 끝나는 대로 바로 (사용자: "push는 되는데로 해줘")
 * 변경이 끝나고 테스트에 이상이 없으면 push 까지 진행 (사용자 지시, 2026-10-10)
 * 2D 단순 액션, 대상 2학년 → 3학년, 학습 목적 (수학 사칙연산 + 기초 영어)
 * 영어 발음은 **미국 원어민 기준, 기기와 무관하게 동일**해야 함 → 발음 파일 방식 (출처만 미정)

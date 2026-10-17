@@ -1,7 +1,7 @@
 /**
  * @file 🃏 짝꿍 찾기 모드 (기억력). 문제 카드와 답 카드를 잠깐 보여 준 뒤 뒤집고, 짝을 기억해 찾는다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak
  * @see doc/planning/game-design.md (3.5 짝꿍 찾기)
  *
  * 한 화면(웨이브)에 여러 문제를 낸다: 문제 3~4개 → 카드 6~8장 (문제 카드 + 답 카드).
@@ -25,8 +25,6 @@
   const BOARD_TOP = 150; // 첫 줄 카드 중심의 위쪽 기준
 
   // ----- 규칙 · 연출 -----
-  const PAIRS_BY_LEVEL = { 1: 3, 2: 3, 3: 4, 4: 4, 5: 4, 6: 4 };
-  const PREVIEW_BY_LEVEL = { 1: 3000, 2: 2600, 3: 2400, 4: 2000, 5: 1800, 6: 1500 }; // 처음 보여 주는 시간 ms
   const FLIP_MS = 160;
   const MISMATCH_SHOW_MS = 700; // 짝이 아닐 때 두 카드를 보여 주는 시간
   const NEXT_DELAY = 1100;
@@ -76,7 +74,7 @@
 
     startWave(q) {
       // 첫 문제(q)에 더해 남은 문제 수 안에서 짝을 채운다. 답이 겹치면 짝이 두 개가 되므로 다시 뽑는다.
-      const want = Math.min(PAIRS_BY_LEVEL[this.opts.level], this.totalQuestions - this.qIndex + 1);
+      const want = Math.min(A.RULES.matchPairsByLevel[this.opts.level], this.totalQuestions - this.qIndex + 1);
       const qs = [q];
       let guard = 0;
       while (qs.length < want && guard++ < 60) {
@@ -89,8 +87,7 @@
       if (!usable(q)) q.prompt = q.review; // 드물게 첫 문제가 듣기 문제면 복습 문장으로 대신 보여 준다
       this.qIndex += qs.length - 1;
       this.updateHud();
-      this.qText.setText('짝을 찾아요!');
-      this.hintText.setText('문제 카드와 답 카드를 이어 주세요');
+      this.setPromptText('짝을 찾아요!', '문제 카드와 답 카드를 이어 주세요');
       this.waveQs = qs;
       this.pairsLeft = qs.length;
 
@@ -108,7 +105,7 @@
 
       // 미리 보기 → 뒤집기
       this.locked = true;
-      const preview = PREVIEW_BY_LEVEL[this.opts.level] + (this.ab.timeBonus || 0) * 300;
+      const preview = A.RULES.matchPreviewMsByLevel[this.opts.level] + (this.ab.timeBonus || 0) * 300;
       this.time.delayedCall(preview, () => {
         if (!this.waveActive) return;
         this.cards.forEach((c) => this.turn(c, false));

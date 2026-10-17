@@ -246,8 +246,7 @@
       super.endWave(delay);
       // 끝난 문제가 계속 떠 있으면 헷갈린다 → 달리기 구간 안내로 바꾼다 (다음 문제가 나오면 기반이 다시 채운다)
       if (this.hearts > 0) {
-        this.qText.setText(RUN_SEGMENT_TEXT);
-        this.hintText.setText(RUN_SEGMENT_HINT);
+        this.setPromptText(RUN_SEGMENT_TEXT, RUN_SEGMENT_HINT);
       }
     }
 

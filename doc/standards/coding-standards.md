@@ -44,6 +44,8 @@ core ← data ← questions ← game / ui
 | 새 과목 (예: 시계 읽기) | `questions/clock.js` + `questions/index.js`에 연결 + `data/curriculum.js`의 `SUBJECTS`에 추가 |
 | 새 히어로 | `data/heroes.js`에 항목 추가 + `data/hero-lines.js`에 한마디 (새 외형이면 `game/hero-art.js`에 style 추가) |
 | 새 단어 | `data/words.js` |
+| 새 어구 · 문장 (영어 5단계~) | `data/sentences.js` (빈칸 · 문법 오답 3개 · 한글 뜻) |
+| 수학 값 표기 · 계산 (분수 · 소수 · 다항식 · 제곱근) | `questions/math-values.js` (생성기 `math.js` 는 이 도구로만 글자를 만든다) |
 | 효과음 · 이미지 | `web/assets/audio/`, `web/assets/images/` |
 | 외부 라이브러리 로컬 사본 | `web/assets/vendor/` |
 
