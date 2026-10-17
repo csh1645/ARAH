@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>발음 파일 생성기</title>
   <!--
-    단어별 미국 원어민 발음 파일을 kokoro-js(Kokoro-82M, Apache 2.0)로 만드는 개발 도구. 배포되지 않는다(web/ 밖).
+    단어 · 어구 · 문장의 미국 원어민 발음 파일을 kokoro-js(Kokoro-82M, Apache 2.0)로 만드는 개발 도구. 배포되지 않는다(web/ 밖).
+    대상: web/src/data/words.js (A.WORDS) + sentences.js (A.PHRASES, A.SENTENCES)
+    파일 이름: 글자를 소문자 · 하이픈으로 바꾼 이름 (예: "I am happy." → i-am-happy.wav). 목록 키는 소문자 원문.
     실행: python tools/audio/collect_server.py → 이 페이지 열기 → [생성 시작]
     처음 한 번 Hugging Face 에서 모델(q8 약 86MB)을 내려받는다. 이후 브라우저 캐시를 쓴다.
     관련 문서: doc/decisions/ADR-0004-pronunciation.md
@@ -27,8 +29,8 @@
 </head>
 <body>
 <main>
-  <h1>🔊 단어 발음 파일 생성기 (kokoro-js)</h1>
-  <p class="muted">web/src/data/words.js 의 단어를 미국 영어 음성으로 만들어 web/assets/audio/words/ 에 저장합니다.</p>
+  <h1>🔊 발음 파일 생성기 (kokoro-js)</h1>
+  <p class="muted">단어(words.js) · 어구 · 문장(sentences.js)을 미국 영어 음성으로 만들어 web/assets/audio/words/ 에 저장합니다.</p>
   <div class="row">
     <label>음성 <select id="voice">
       <option value="af_heart" selected>af_heart (미국 여성, 등급 A)</option>
@@ -51,19 +53,29 @@
   const KOKORO_URL = 'https://cdn.jsdelivr.net/npm/kokoro-js@1.2.0/+esm';
   const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
   const SILENCE = 0.01; // 앞뒤 무음으로 볼 진폭
-  const PAD_SEC = 0.06; // 잘라낸 뒤 남겨 둘 여유
+  const PAD_SEC = 0.06; // 잘라낸 뒤 앞에 남겨 둘 여유
+  const TAIL_SEC = 0.15; // 뒤에 남겨 둘 여유 — 끝소리(s, t)가 잘려 툭 끊기는 느낌을 없앤다
+  const FADE_SEC = 0.012; // 앞뒤 페이드 — 시작 · 끝의 "틱" 잡음 방지
   const PEAK = 0.9; // 음량 정규화 목표
 
   const $ = (s) => document.querySelector(s);
   const log = (msg) => { $('#log').textContent += `\n${msg}`; $('#log').scrollTop = 1e9; };
   window.genResult = { done: false, ok: [], failed: [] }; // 자동화 · 점검용 상태
 
-  /** words.js 를 그대로 실행해 단어 목록을 얻는다 (게임과 같은 원본 · 형식이 바뀌어도 안전). */
-  async function readWords() {
-    const text = await (await fetch('/web/src/data/words.js', { cache: 'reload' })).text();
+  /**
+   * words.js · sentences.js 를 그대로 실행해 읽을 글 목록을 얻는다 (게임과 같은 원본 · 형식이 바뀌어도 안전).
+   * @returns {Promise<{text: string, key: string, file: string}[]>} key = 게임이 찾는 소문자 원문
+   */
+  async function readItems() {
     const fakeWindow = { ARAH: {} };
-    new Function('window', text)(fakeWindow); // 우리 저장소의 데이터 파일 (외부 입력 아님)
-    return fakeWindow.ARAH.WORDS.map((w) => w.en);
+    for (const f of ['words.js', 'sentences.js']) {
+      const text = await (await fetch(`/web/src/data/${f}`, { cache: 'reload' })).text();
+      new Function('window', text)(fakeWindow); // 우리 저장소의 데이터 파일 (외부 입력 아님)
+    }
+    const A = fakeWindow.ARAH;
+    const texts = [...A.WORDS.map((w) => w.en), ...A.PHRASES.map((p) => p.en), ...A.SENTENCES.map((s) => s.en)];
+    const slug = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return [...new Set(texts)].map((text) => ({ text, key: text.toLowerCase(), file: `${slug(text)}.wav` }));
   }
 
   /** 앞뒤 무음을 자르고 음량을 맞춘다. */
@@ -73,11 +85,15 @@
     while (s < e && Math.abs(samples[s]) < SILENCE) s++;
     while (e > s && Math.abs(samples[e]) < SILENCE) e--;
     const pad = Math.round(PAD_SEC * rate);
-    const out = samples.slice(Math.max(0, s - pad), Math.min(samples.length, e + pad));
+    const out = samples.slice(Math.max(0, s - pad), Math.min(samples.length, e + Math.round(TAIL_SEC * rate)));
     let peak = 0;
     for (const v of out) peak = Math.max(peak, Math.abs(v));
     const gain = peak > 0 ? PEAK / peak : 1;
-    for (let i = 0; i < out.length; i++) out[i] *= gain;
+    const fade = Math.round(FADE_SEC * rate);
+    for (let i = 0; i < out.length; i++) {
+      const edge = Math.min(1, i / fade, (out.length - 1 - i) / fade); // 앞뒤로 부드럽게
+      out[i] *= gain * edge;
+    }
     return out;
   }
 
@@ -102,18 +118,18 @@
     $('#rows').innerHTML = '';
     const voice = $('#voice').value;
     const speed = Number($('#speed').value);
-    const words = await readWords();
-    log(`단어 ${words.length}개, 음성 ${voice}, 속도 ${speed}`);
+    const items = await readItems();
+    log(`읽을 글 ${items.length}개 (단어 · 어구 · 문장), 음성 ${voice}, 속도 ${speed}`);
 
-    // 이미 파일이 있는 단어는 건너뛴다 → 단어를 추가했을 때 새 단어만 만들면 된다
+    // 이미 파일이 있는 글은 건너뛴다 → 단어 · 문장을 추가했을 때 새 것만 만들면 된다
     const files = {};
     const todo = [];
-    for (const word of words) {
-      const exists = $('#skip').checked && (await fetch(`/web/assets/audio/words/${word}.wav`, { method: 'HEAD' })).ok;
-      if (exists) files[word] = `${word}.wav`;
-      else todo.push(word);
+    for (const it of items) {
+      const exists = $('#skip').checked && (await fetch(`/web/assets/audio/words/${it.file}`, { method: 'HEAD' })).ok;
+      if (exists) files[it.key] = it.file;
+      else todo.push(it);
     }
-    log(`기존 파일 ${Object.keys(files).length}개 유지, 새로 만들 단어 ${todo.length}개`);
+    log(`기존 파일 ${Object.keys(files).length}개 유지, 새로 만들 것 ${todo.length}개`);
     if (todo.length === 0) {
       await saveManifest(files, voice, speed);
       window.genResult.done = true;
@@ -128,19 +144,22 @@
     const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'wasm' });
     log(`모델 준비 완료 (${((performance.now() - t0) / 1000).toFixed(1)}초)`);
 
-    for (const word of todo) {
+    for (const it of todo) {
       const tr = document.createElement('tr');
       tr.innerHTML = '<td></td><td></td><td></td><td class="muted">생성 중…</td><td></td>';
-      tr.cells[0].textContent = word;
+      tr.cells[0].textContent = it.text;
       $('#rows').appendChild(tr);
       try {
-        // 마침표를 붙이면 단어 하나도 자연스럽게 끝이 내려가는 억양으로 읽는다
-        const audio = await tts.generate(`${word}.`, { voice, speed });
+        // 문장부호가 없으면 마침표를 붙인다 → 단어 · 어구도 끝이 자연스럽게 내려가는 억양 (문장은 ? 억양 그대로)
+        const say = /[.?!]$/.test(it.text) ? it.text : `${it.text}.`;
+        const audio = await tts.generate(say, { voice, speed });
         const samples = tidy(audio.audio, audio.sampling_rate);
         const wav = toWav(samples, audio.sampling_rate);
-        const res = await fetch(`/save?name=${word}.wav`, { method: 'POST', body: wav });
+        const res = await fetch(`/save?name=${it.file}`, { method: 'POST', body: wav });
         if (!res.ok) throw new Error(`저장 실패 HTTP ${res.status}`);
-        files[word] = `${word}.wav`;
+        files[it.key] = it.file;
+        const word = it.text;
+        const fileName = it.file;
         const sec = samples.length / audio.sampling_rate;
         tr.cells[1].textContent = `${sec.toFixed(2)}초`;
         tr.cells[2].textContent = `${Math.round(wav.size / 1024)}KB`;
@@ -149,13 +168,13 @@
         const play = document.createElement('button');
         play.type = 'button';
         play.textContent = '▶';
-        play.onclick = () => new Audio(`/web/assets/audio/words/${word}.wav?t=${Date.now()}`).play();
+        play.onclick = () => new Audio(`/web/assets/audio/words/${fileName}?t=${Date.now()}`).play();
         tr.cells[4].appendChild(play);
         window.genResult.ok.push({ word, sec: +sec.toFixed(2), kb: Math.round(wav.size / 1024) });
       } catch (err) {
         tr.cells[3].textContent = String(err.message || err);
         tr.cells[3].className = 'bad';
-        window.genResult.failed.push({ word, error: String(err.message || err) });
+        window.genResult.failed.push({ word: it.text, error: String(err.message || err) });
       }
     }
 

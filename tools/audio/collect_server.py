@@ -9,7 +9,7 @@
     python tools/audio/collect_server.py
     → 브라우저에서 http://127.0.0.1:8124/tools/audio/kokoro-generate.html 열기
 
-보안: 127.0.0.1 에서만 열리고, 저장은 "영문 소문자.wav" 이름만 허용한다 (경로 조작 차단).
+보안: 127.0.0.1 에서만 열리고, 저장은 "영문 소문자 · 숫자 · 하이픈.wav" 이름만 허용한다 (경로 조작 차단).
 관련 문서: doc/decisions/ADR-0004-pronunciation.md
 """
 
@@ -24,11 +24,12 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / "web" / "assets" / "audio" / "words"
 MANIFEST_JS = ROOT / "web" / "src" / "data" / "audio-manifest.js"
 HOST, PORT = "127.0.0.1", 8124
-MAX_WAV_BYTES = 2 * 1024 * 1024  # 단어 하나에 2MB 를 넘을 일은 없다
-NAME_RE = re.compile(r"^[a-z]{1,20}\.wav$")
+MAX_WAV_BYTES = 2 * 1024 * 1024  # 짧은 문장 하나도 2MB 를 넘을 일은 없다
+NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*\.wav$")  # 예: apple.wav, i-am-happy.wav (점 · 슬래시 불가)
+KEY_RE = re.compile(r"^[a-z0-9 ,.?!'-]{1,80}$")  # 목록 키 = 소문자 원문 (예: "i am happy.")
 
 MANIFEST_TEMPLATE = """/**
- * @file 단어별 원어민 발음 파일 목록. 발음 생성 도구가 자동으로 다시 쓴다 (직접 고치지 않는다).
+ * @file 단어 · 어구 · 문장의 원어민 발음 파일 목록. 발음 생성 도구가 자동으로 다시 쓴다 (직접 고치지 않는다).
  * @layer data
  * @depends 없음
  * @see doc/decisions/ADR-0004-pronunciation.md, web/assets/audio/words/README.md
@@ -41,7 +42,7 @@ MANIFEST_TEMPLATE = """/**
   /** 발음 파일 출처 (라이선스 · 표기 확인용) */
   A.WORD_AUDIO_SOURCE = {source};
 
-  /** @type {{Object<string, string>}} 영어 단어(소문자) → 파일 이름 */
+  /** @type {{Object<string, string>}} 영어 단어 · 어구 · 문장(소문자 원문) → 파일 이름 */
   A.WORD_AUDIO = {mapping};
 }})(window.ARAH);
 """
@@ -76,10 +77,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self._reply(200, {"saved": name, "bytes": len(data)})
 
         if url.path == "/manifest":
-            data = self._read_body(64 * 1024)
+            data = self._read_body(256 * 1024)
             try:
                 payload = json.loads(data.decode("utf-8"))
-                files = {w: f for w, f in payload["files"].items() if re.match(r"^[a-z]+$", w) and NAME_RE.match(f)}
+                files = {w: f for w, f in payload["files"].items() if KEY_RE.match(w) and NAME_RE.match(f) and len(f) <= 90}
                 source = str(payload.get("source", ""))[:200]
             except Exception:
                 return self._reply(400, {"error": "invalid manifest"})
