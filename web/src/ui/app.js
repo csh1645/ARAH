@@ -78,10 +78,12 @@
   }
 
   /**
-   * 테스트 단계: 모든 히어로를 고를 수 있다 (로컬 개발 서버, 또는 주소에 ?allHeroes).
+   * 테스트 단계: 모든 히어로를 고를 수 있다. 사용자 결정(2026-10-17) — 지금은 운영 배포본도 테스트 단계라 항상 켠다.
+   * 테스트가 끝나면 TEST_PHASE 를 false 로 (그 뒤에는 로컬 개발 서버 · 주소 ?allHeroes 일 때만).
    * 고르기만 열어 주고 진행 기록(합류 수 · 다음 합류 · 저장된 unlocked)은 실제 스타 기준 그대로다.
    */
-  const TEST_ALL_HEROES = !!(import.meta.env && import.meta.env.DEV) || new URLSearchParams(location.search).has('allHeroes');
+  const TEST_PHASE = true;
+  const TEST_ALL_HEROES = TEST_PHASE || !!(import.meta.env && import.meta.env.DEV) || new URLSearchParams(location.search).has('allHeroes');
   /** 스타로 실제 합류했는지 (진행 기록용) */
   const earnedUnlock = (hero) => state.stars >= hero.unlockStars || state.unlocked.includes(hero.id);
   /** 고를 수 있는지 (테스트 단계면 모두) */
