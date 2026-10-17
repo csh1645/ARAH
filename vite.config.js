@@ -1,5 +1,6 @@
 /**
- * Vite 설정. 게임 소스는 web/ 아래 그대로 두고, 빌드 결과는 dist/ 에 만든다.
+ * Vite 설정. 게임 소스는 web/ 아래 그대로 두고, 빌드 결과는 web/dist/ 에 만든다
+ *   (Vercel Root Directory 가 web 이라 결과도 web 안에 둔다 — web/vercel.json, doc/guides/deploy-vercel.md).
  * - root: web (index.html 위치)
  * - publicDir: web/public — 발음 파일 · 스프라이트 · CSS 처럼 가공 없이 그대로 내보낼 파일
  * - base: './' — 어떤 경로(Vercel 미리 보기 주소 등)에 올려도 상대 경로로 동작
@@ -12,7 +13,7 @@ export default defineConfig({
   base: './',
   publicDir: 'public',
   build: {
-    outDir: '../dist',
+    outDir: 'dist', // = web/dist
     emptyOutDir: true,
     chunkSizeWarningLimit: 1600, // Phaser 하나가 약 1.2MB (게임 엔진이라 정상)
     rollupOptions: {

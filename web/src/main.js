@@ -8,6 +8,8 @@
  * (나중에 파일들을 ES 모듈 export/import 로 바꾸면 이 목록은 자연스럽게 줄어든다)
  */
 import './vendor-globals.js';
+import '@fontsource/black-han-sans'; // 글꼴은 사이트 안에 함께 배포 (외부 글꼴 서버로 접속 정보가 나가지 않게, 아동 대상 보안 규칙)
+import '@fontsource/jua';
 import './styles/style.css'; // 화면 스타일 (Vite 가 묶어서 내보냄)
 
 // core
