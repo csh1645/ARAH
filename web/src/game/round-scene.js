@@ -3,7 +3,7 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily, A.heroLine
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily, A.heroLine, A.SPRITES
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -91,6 +91,8 @@
   const MELEE_GO_MS = 340; // 근접 공격: 목표까지 뛰어가는 시간 (히어로 속도 능력으로 나눈다)
   const MELEE_BACK_MS = 300; // 근접 공격: 돌아오는 시간
   const MELEE_DEFAULT_ARC = 120;
+  /** 히어로 스프라이트 아틀라스 텍스처 키 (프레임 이름 = 자세 이름, tools/sprites/build.mjs) */
+  const HERO_ATLAS = 'hero-atlas';
 
   // ----- 히어로 말풍선 (대사는 data/hero-lines.js) -----
   // 매번 말하면 시끄럽고 문제 읽기를 방해하므로 정답 · 오답 때는 확률로만, 콤보 · 시작 · 끝은 꼭 말한다.
@@ -162,6 +164,15 @@
       this.time.delayedCall(SAY_START_DELAY, () => this.heroSay('catchphrase', true)); // 판 시작: 자기만의 한마디
       this.showIntro(this.introText());
       this.time.delayedCall(INTRO_MS, () => this.nextQuestion());
+    }
+
+    /**
+     * 그림 리소스를 불러온다. 이 히어로의 스프라이트 아틀라스가 목록(A.SPRITES)에 있으면 읽고,
+     * 없거나 불러오기에 실패하면 createHero 가 코드 그림(hero-art.js)으로 대신 그린다.
+     */
+    preload() {
+      const path = A.SPRITES && A.SPRITES.heroes && A.SPRITES.heroes[this.hero.id];
+      if (path) this.load.atlas(HERO_ATLAS, `${path}.png`, `${path}.json`);
     }
 
     // ---------- 하위 클래스 훅 (기본 구현) ----------
@@ -362,7 +373,7 @@
     ghostTrail() {
       const p = this.player;
       const ghost = this.add
-        .image(p.x, p.y, p.texture.key) // 지금 자세 그대로
+        .image(p.x, p.y, p.texture.key, p.frame.name) // 지금 자세 그대로 (아틀라스면 프레임까지)
         .setAngle(p.angle)
         .setFlipX(p.flipX)
         .setScale(p.scaleX, p.scaleY)
@@ -588,30 +599,45 @@
      * @param {number} [scale=1] 모드별 크기 (보스 배틀은 크게, 짝꿍 찾기는 작게). 반동 연출의 기준이 된다
      */
     createHero(x, y, scale = 1) {
-      const { w, h } = GAME.HERO_SIZE;
-      for (const pose of A.HERO_POSES) {
-        const key = `hero-${pose}`;
-        if (this.textures.exists(key)) this.textures.remove(key); // 다시 하기: 다른 히어로일 수 있다
-        const tex = this.textures.createCanvas(key, w, h);
-        A.drawHero(tex.getContext(), this.hero, w, h, { pose });
-        tex.refresh();
+      // 그림 리소스(스프라이트 아틀라스)를 preload 에서 불러왔으면 그것을, 아니면 코드로 자세별 텍스처를 그린다
+      this.heroAtlas = this.textures.exists(HERO_ATLAS);
+      if (!this.heroAtlas) {
+        const { w, h } = GAME.HERO_SIZE;
+        for (const pose of A.HERO_POSES) {
+          const key = `hero-${pose}`;
+          if (this.textures.exists(key)) this.textures.remove(key); // 다시 하기: 다른 히어로일 수 있다
+          const tex = this.textures.createCanvas(key, w, h);
+          A.drawHero(tex.getContext(), this.hero, w, h, { pose });
+          tex.refresh();
+        }
       }
       this.heroScale = scale;
-      this.heroAnim = { base: 'idle', pose: null, until: 0 };
+      this.heroAnim = { base: 'idle', pose: null, until: 0, current: 'idle' };
       this.inMelee = false;
-      this.player = this.add.image(x, y, 'hero-idle').setDepth(DEPTH.hero).setScale(scale);
+      this.player = this.add.image(x, y, ...this.heroFrameOf('idle')).setDepth(DEPTH.hero).setScale(scale);
       this.events.on('update', this.tickHeroAnim, this);
       return this.player;
     }
 
-    /** 매 프레임: 지금 보여 줄 자세 프레임으로 텍스처를 바꾼다. */
+    /**
+     * 자세 이름 → [텍스처 키, 프레임]. 아틀라스면 한 텍스처의 프레임, 코드 그림이면 자세별 텍스처.
+     * @param {string} pose
+     * @returns {[string, string?]}
+     */
+    heroFrameOf(pose) {
+      return this.heroAtlas ? [HERO_ATLAS, pose] : [`hero-${pose}`];
+    }
+
+    /** 매 프레임: 지금 보여 줄 자세 프레임으로 바꾼다. */
     tickHeroAnim(time) {
       const p = this.player;
       if (!p || !p.active) return;
       const a = this.heroAnim;
       if (a.pose && time >= a.until) a.pose = null;
-      const key = `hero-${a.pose || HERO_BASES[a.base](time)}`;
-      if (p.texture.key !== key) p.setTexture(key);
+      const pose = a.pose || HERO_BASES[a.base](time);
+      if (a.current === pose) return;
+      a.current = pose;
+      p.setTexture(...this.heroFrameOf(pose));
     }
 
     /**
@@ -786,7 +812,7 @@
     /** 줄 · 공격이 나가는 손 위치. 지금 자세(공격 자세면 쭉 뻗은 손)와 크기 · 좌우 방향을 반영한다. */
     hand() {
       const p = this.player;
-      const r = A.heroHand(p.texture.key.replace('hero-', ''));
+      const r = A.heroHand(this.heroAnim ? this.heroAnim.current : 'idle');
       const dir = p.flipX ? -1 : 1;
       const k = Math.abs(p.scaleY) || 1; // 히어로를 크게 · 작게 그린 모드도 손 위치가 맞게
       const { w, h } = GAME.HERO_SIZE;

@@ -15,6 +15,22 @@ GitHub 저장소(`csh1645/ARAH`)의 `main` 브랜치에 push하면 Vercel이 자
 | Install Command | (비움) | 설치할 패키지 없음 |
 | Environment Variables | (없음) | 게임은 서버 비밀 값을 쓰지 않습니다 |
 
+## Vite 전환 후 설정 (feature/vite-pipeline 을 main 에 합칠 때, [ADR-0008](../decisions/ADR-0008-vite-content-pipeline.md))
+
+Vercel 프로젝트 → Settings → Build and Deployment 에서 **합치기 직전에** 바꿉니다.
+
+| 항목 | 값 |
+|---|---|
+| Framework Preset | `Vite` |
+| **Root Directory** | **비움 (저장소 루트)** — package.json 이 루트에 있음 |
+| Build Command | `npm run build` (콘텐츠 DB 검사 · 변환 포함) |
+| Output Directory | `dist` |
+| Install Command | `npm install` (기본값) |
+| Node.js Version | 22.x 이상 |
+
+* 배포 주소는 그대로이므로 아이의 진행 기록(브라우저 저장소)도 그대로 이어집니다
+* 브랜치를 push 하면 Vercel 이 **미리 보기 주소**를 따로 만들어 줍니다 (main 배포에는 영향 없음)
+
 ## 배포 후 확인
 
 - [ ] 배포 주소에서 메뉴가 보이고 콘솔(F12)에 오류가 없다

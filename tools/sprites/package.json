@@ -1,0 +1,9 @@
+{
+  "name": "arah-sprite-tools",
+  "private": true,
+  "type": "module",
+  "description": "스프라이트 아틀라스 굽기 도구 전용 의존성 (게임 배포 빌드에는 포함되지 않는다)",
+  "dependencies": {
+    "@napi-rs/canvas": "0.1.98"
+  }
+}

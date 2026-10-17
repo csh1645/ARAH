@@ -7,7 +7,8 @@
 
 * **무엇:** "히어로 대작전" — 아이 한 명을 위한 수학 · 영어 학습 액션 웹게임. **1~12단계 = 초1 ~ 중3** (단계 버튼에 "추천 학년" 표시, [ADR-0007](doc/decisions/ADR-0007-levels-elementary-to-middle.md))
 * **테마:** 스파이더맨 · 어벤저스 느낌의 **히어로 연합 8팀 × 6명 = 48명**, 팀 스타로 한 명씩 합류. 원조를 떠올리게 하는 오마주 디자인이되 **공식 이름 · 로고 · 공식 이미지 파일은 절대 쓰지 않는다** ([ADR-0002](doc/decisions/ADR-0002-original-characters.md))
-* **스택:** 순수 HTML/JS, 빌드 도구 없음. Phaser 3.80.1(2D) + Three.js r149(3D, 문 통과 3D 모드) — 둘 다 CDN, 버전 고정
+* **스택 (브랜치 `feature/vite-pipeline`, [ADR-0008](doc/decisions/ADR-0008-vite-content-pipeline.md)):** Vite 6 빌드 + Phaser 3.80.1(2D) + Three.js 0.149(3D) — npm, 버전 고정. 콘텐츠 원본은 **SQLite DB** `content/arah-content.db` → 빌드 때 JSON. 발음은 `npm run audio`(GitHub Actions 자동), 히어로 그림은 스프라이트 아틀라스(`npm run sprites`, 디자이너 그림으로 교체 가능)
+* **이 브랜치는 로컬 확인용** — 사용자 확인 전에는 main 에 합치지 않는다 (main 은 아직 빌드 없는 순수 HTML 판, Vercel Root Directory `web`)
 * **배포:** GitHub `csh1645/ARAH` `main` → Vercel 자동 배포, **Root Directory = `web`** ([deploy-vercel.md](doc/guides/deploy-vercel.md))
 * **사용자 선호:** 한국어 응답, 결론 먼저. 문서는 `doc/` 아래 Markdown으로 관리, 개발 표준 · 주석을 중시, **변경 후 에이전트가 직접 브라우저로 끝까지 플레이 테스트하고 결과를 보고**하길 원함
 
@@ -44,16 +45,22 @@
 상세: [doc/standards/coding-standards.md](doc/standards/coding-standards.md)
 
 ```
+content/   arah-content.db (SQLite 원본) · arah-content.sql (자동 내보내기, diff 용) · schema.sql (표 · 규칙)
+scripts/   content-build(DB → JSON, 규칙 검사) · content-export · content-import-legacy · lib/content-db
+tools/     audio/(generate.mjs · wav.mjs, 별도 package.json) · sprites/(build.mjs, 별도 package.json)
+web/public/assets/  audio/words/*.wav · sprites/heroes/<id>.png+json (그대로 배포)
 web/src/
+├─ main.js     진입점: 예전 <script> 순서대로 import (import 순서 = 의존 순서) · vendor-globals.js (Phaser · THREE 전역) · styles/
 ├─ core/       util(랜덤 · bezier2) · storage · speech · sfx   (의존 없음)
-├─ data/       curriculum(단계 · 규칙 · 놀이 목록) · heroes(팀 · 48명) · hero-lines · words · sentences(어구 · 문장) · audio-manifest   (값만, 로직 없음)
+├─ data/       curriculum · heroes · hero-lines · words / sentences(generated/content.json 읽기) · audio-manifest(.json) · sprite-manifest(.json)   (값만, 로직 없음)
 ├─ questions/  math-values(분수 · 소수 · 다항식 · 제곱근 표기) · math · english · index · review(복습 노트)   (엔진 독립: Phaser/DOM 금지)
 ├─ game/       round-scene(공통 규칙 · 능력 계산 · 소리 · 공격 그리기) · travels(팀별 이동) · attacks(팀별 공격) · modes/(놀이 6종) · views/(문 통과 2D·3D) · hero-art · launcher
 └─ ui/         app.js (메뉴 · 결과 · 모바일 처리)
 ```
 
 * **의존 방향:** `core ← data ← questions ← game / ui`. 역방향 참조 금지
-* **모듈 방식:** 일반 `<script>` + 전역 `window.ARAH`(코드에서는 `A`) + IIFE + `'use strict'`. **로드 순서 = `web/index.html`의 script 순서**
+* **모듈 방식:** 전역 `window.ARAH`(코드에서는 `A`) + IIFE + `'use strict'` 그대로, Vite 가 묶는다. **로드 순서 = `web/src/main.js` 의 import 순서**. 새 파일은 main.js 에 한 줄 추가
+* **콘텐츠는 DB 에서만 고친다:** words.js · sentences.js 는 JSON 을 읽기만 한다. 고친 뒤 `npm run content`(검사) · `npm run content:export`(.sql) 를 함께 커밋
 * **주석:** 모든 JS 파일 머리에 `@file @layer @depends @see`, 공개 API(`A.*`)에는 JSDoc, 공유 객체는 `@typedef`
 * **게임 수치는 `data/curriculum.js`의 `A.RULES`에만** 둔다
 * **새 모드:** `RoundScene` 상속 + 훅(`createWorld/startWave/clearWave`, 선택 `questionOptions`) + `A.GAME_MODES[id]` 등록 + `A.MODES` 메뉴 항목 ([ADR-0003](doc/decisions/ADR-0003-game-mode-architecture.md))
@@ -73,11 +80,12 @@ web/src/
 * push가 필요하면 토큰을 그 명령의 환경 변수로만 전달하고 끝나면 지운다 (6절 명령). 출력은 토큰 패턴을 가린다
 * 커밋 전 `git grep --cached -E "github_pat_|ghp_|AIza"`로 비밀 값이 섞이지 않았는지 확인한다
 * 아동 대상: 개인정보 수집 · 외부 전송 금지, 동적 문자열은 `textContent`로만 넣는다
-* 외부 API 키(Google TTS 등)는 환경 변수로만 받는다 (`tools/audio/generate_word_audio.py` 참고)
+* 외부 API 키가 필요한 도구를 만들면 환경 변수로만 받는다 (지금은 키가 필요한 도구 없음)
 
 ## 5. 실행 · 테스트 방법
 
-* 로컬 서버: `python -m http.server 8123 --directory web` (Claude 데스크톱 앱에서는 `.claude/launch.json`의 `web` 설정으로 `preview_start`)
+* 로컬 서버: `npm install` 후 `npm run dev` → http://localhost:5173 (Claude 데스크톱 앱에서는 `.claude/launch.json` 의 `vite` 설정으로 `preview_start`). 명령 모음: [run-local.md](doc/guides/run-local.md)
+* 브라우저 창이 작거나 가려져 requestAnimationFrame 이 멈추면 테스트 스크립트에서 `setInterval(() => ARAH.currentGame.loop.step(performance.now()), 16)` 로 게임 루프를 직접 돌린다
 * 콘솔에서 현재 판의 장면: `ARAH.currentGame.scene.getScene('play')`
 * **자동 플레이 테스트 요령** (브라우저 도구는 왕복 지연이 수 초라 실시간 클릭이 어렵다 → 페이지 안 스크립트로 진행):
   * 드론 잡기: `s.fireAt(drone.c.x, drone.c.y)` (`s.lastFire = -9999`로 연사 제한 해제)
@@ -85,7 +93,7 @@ web/src/
   * 문 통과(2D · 3D): `s.setLane(correct.lane); s.dash = true`
   * 철자 잇기: `s.pick(s.blocks.find(b => !b.used && b.ch === s.word[s.idx]))`, 또는 `window` 에 `KeyboardEvent('keydown', {key, keyCode})` 디스패치
   * 히어로 러너: 30ms 마다 `s.segment === 'quiz'` 이면 정답 구슬 `t` 가 `t.c.x - s.player.x` 40~95px 일 때 `s.jump()` (땅에 있을 때). 바로 정답 처리는 `s.grabOrb(s.orbs.find(o => o.isCorrect))`
-* **로컬 서버 캐시 주의:** `python -m http.server`는 바뀐 JS 를 캐시에서 내줄 수 있다 → 테스트 전 `fetch(url, {cache:'reload'})` 후 새로고침
+* Vite 개발 서버는 고친 파일을 바로 반영한다 (예전 python 서버의 캐시 문제 없음)
 * **브라우저 창이 가려지면 게임 루프가 멈춘다** (`document.hidden`, frame 0). 테스트 전 `tabs_select`로 탭을 앞으로
   * 문제 생성기 검증: `ARAH.makeQuestion(subject, level, opts)`를 수천 번 호출해 정답 1개 · 보기 중복 없음 · 음수 없음 확인
   * 하나의 javascript 실행은 45초 제한 → 긴 완주는 백그라운드 async 루프로 돌리고 나중에 결과를 조회

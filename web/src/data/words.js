@@ -1,9 +1,12 @@
+import content from './generated/content.json';
+
 /**
- * @file 영어 단어 목록 (약 120개). 단어를 추가하면 doc/content/curriculum.md 의 단어 표도 갱신하고,
- *       발음 파일을 만든다 (web/assets/audio/words/README.md — 새 단어만 증분 생성).
+ * @file 영어 단어 목록. **원본은 SQLite 콘텐츠 DB (content/arah-content.db 의 words 표)** 이고,
+ *       npm run content 가 만든 generated/content.json 을 읽는다. 단어 추가 · 수정은 DB 에서 한다 (이 파일은 고치지 않음).
+ *       발음 파일은 npm run audio 가 새 단어만 만든다 (GitHub Actions 도 자동 실행).
  * @layer data
- * @depends 없음
- * @see doc/content/curriculum.md (영어)
+ * @depends generated/content.json (빌드 산출물)
+ * @see content/schema.sql, doc/content/curriculum.md (영어), doc/decisions/ADR-0008-vite-content-pipeline.md
  *
  * 규칙: en 은 영문 소문자만(띄어쓰기 · 기호 없음, 철자 잇기와 발음 파일 이름에 그대로 쓰인다),
  *       emoji 와 ko 는 단어끼리 겹치지 않게 한다 (그림 · 뜻 보기 문제에서 정답이 하나여야 함.
@@ -21,62 +24,6 @@
 (function (A) {
   'use strict';
 
-  /** [en, ko, emoji, lv] 묶음을 분류별로 적고 아래에서 Word 객체로 바꾼다 (읽고 고치기 쉽게) */
-  const RAW = {
-    fruit: [
-      ['apple', '사과', '🍎', 1], ['banana', '바나나', '🍌', 1], ['grape', '포도', '🍇', 2], ['orange', '오렌지', '🍊', 2],
-      ['strawberry', '딸기', '🍓', 3], ['lemon', '레몬', '🍋', 2], ['peach', '복숭아', '🍑', 2], ['watermelon', '수박', '🍉', 3],
-    ],
-    animal: [
-      ['dog', '개', '🐶', 1], ['cat', '고양이', '🐱', 1], ['lion', '사자', '🦁', 2], ['tiger', '호랑이', '🐯', 2],
-      ['rabbit', '토끼', '🐰', 2], ['bear', '곰', '🐻', 1], ['pig', '돼지', '🐷', 1], ['cow', '소', '🐮', 1],
-      ['monkey', '원숭이', '🐵', 2], ['fish', '물고기', '🐟', 1], ['bird', '새', '🐦', 1], ['spider', '거미', '🕷️', 2],
-      ['frog', '개구리', '🐸', 2], ['duck', '오리', '🦆', 1], ['horse', '말', '🐴', 2], ['sheep', '양', '🐑', 2],
-      ['chicken', '닭', '🐔', 3], ['mouse', '쥐', '🐭', 2], ['snake', '뱀', '🐍', 2], ['turtle', '거북', '🐢', 3],
-      ['whale', '고래', '🐳', 2], ['shark', '상어', '🦈', 2], ['panda', '판다', '🐼', 2], ['zebra', '얼룩말', '🦓', 2],
-      ['elephant', '코끼리', '🐘', 3], ['giraffe', '기린', '🦒', 3], ['dolphin', '돌고래', '🐬', 3], ['penguin', '펭귄', '🐧', 3],
-      ['butterfly', '나비', '🦋', 3], ['bee', '벌', '🐝', 1], ['ant', '개미', '🐜', 1],
-    ],
-    nature: [
-      ['sun', '해', '☀️', 1], ['moon', '달', '🌙', 1], ['star', '별', '⭐', 1], ['tree', '나무', '🌳', 1],
-      ['flower', '꽃', '🌸', 2], ['rain', '비', '🌧️', 2], ['snow', '눈(날씨)', '❄️', 2], ['cloud', '구름', '☁️', 2],
-      ['fire', '불', '🔥', 2], ['sea', '바다', '🌊', 1], ['mountain', '산', '⛰️', 3], ['rainbow', '무지개', '🌈', 3],
-      ['leaf', '나뭇잎', '🍃', 2],
-    ],
-    food: [
-      ['cake', '케이크', '🍰', 1], ['milk', '우유', '🥛', 1], ['egg', '달걀', '🥚', 1], ['bread', '빵', '🍞', 2],
-      ['rice', '밥', '🍚', 2], ['pizza', '피자', '🍕', 2], ['candy', '사탕', '🍬', 2], ['juice', '주스', '🧃', 2],
-      ['water', '물', '💧', 2], ['cookie', '쿠키', '🍪', 2], ['carrot', '당근', '🥕', 2], ['corn', '옥수수', '🌽', 1],
-      ['potato', '감자', '🥔', 3], ['tomato', '토마토', '🍅', 3],
-    ],
-    thing: [
-      ['car', '자동차', '🚗', 1], ['bus', '버스', '🚌', 1], ['book', '책', '📖', 1], ['ball', '공', '⚽', 1],
-      ['house', '집', '🏠', 2], ['hat', '모자', '🧢', 1], ['bag', '가방', '🎒', 1], ['pencil', '연필', '✏️', 2],
-      ['clock', '시계', '⏰', 2], ['chair', '의자', '🪑', 2], ['bed', '침대', '🛏️', 1], ['door', '문', '🚪', 1],
-      ['cup', '컵', '🥤', 1], ['key', '열쇠', '🔑', 1], ['phone', '전화기', '📱', 2], ['robot', '로봇', '🤖', 2],
-      ['kite', '연', '🪁', 2], ['train', '기차', '🚆', 2], ['ship', '배', '🚢', 2], ['plane', '비행기', '✈️', 2],
-      ['bike', '자전거', '🚲', 2], ['umbrella', '우산', '☂️', 3], ['glasses', '안경', '👓', 3], ['shoes', '신발', '👟', 2],
-      ['shirt', '셔츠', '👕', 2], ['sock', '양말', '🧦', 1], ['crayon', '크레용', '🖍️', 3], ['scissors', '가위', '✂️', 3],
-      ['ruler', '자', '📏', 2], ['computer', '컴퓨터', '💻', 3], ['piano', '피아노', '🎹', 2], ['drum', '북', '🥁', 1],
-      ['guitar', '기타', '🎸', 3],
-    ],
-    body: [
-      ['eye', '눈(얼굴)', '👁️', 1], ['ear', '귀', '👂', 1], ['nose', '코', '👃', 1], ['hand', '손', '✋', 1], ['foot', '발', '🦶', 1],
-    ],
-    people: [
-      ['baby', '아기', '👶', 1], ['boy', '소년', '👦', 1], ['girl', '소녀', '👧', 1],
-    ],
-    color: [
-      ['red', '빨간색', '🔴', 1], ['blue', '파란색', '🔵', 1], ['green', '초록색', '🟢', 2], ['yellow', '노란색', '🟡', 2],
-      ['black', '검은색', '⚫', 2], ['white', '흰색', '⚪', 2],
-    ],
-    number: [
-      ['one', '하나', '1️⃣', 1], ['two', '둘', '2️⃣', 1], ['three', '셋', '3️⃣', 1], ['four', '넷', '4️⃣', 1], ['five', '다섯', '5️⃣', 1],
-      ['six', '여섯', '6️⃣', 1], ['seven', '일곱', '7️⃣', 2], ['eight', '여덟', '8️⃣', 2], ['nine', '아홉', '9️⃣', 2], ['ten', '열', '🔟', 1],
-    ],
-  };
-
   /** @type {Word[]} */
-  A.WORDS = Object.entries(RAW).flatMap(([cat, rows]) =>
-    rows.map(([en, ko, emoji, lv]) => ({ en, ko, emoji, cat, lv })));
+  A.WORDS = content.words;
 })(window.ARAH);

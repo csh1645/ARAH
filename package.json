@@ -1,0 +1,25 @@
+{
+  "name": "arah-hero-mission",
+  "private": true,
+  "version": "0.2.0",
+  "description": "히어로 대작전 — 초1~중3 수학 · 영어 학습 액션 웹게임 (Vite + Phaser + Three.js)",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run content && vite",
+    "build": "npm run content && vite build",
+    "preview": "vite preview",
+    "content": "node scripts/content-build.mjs",
+    "content:import": "node scripts/content-import-legacy.mjs",
+    "content:export": "node scripts/content-export.mjs",
+    "audio": "npm --prefix tools/audio install --no-audit --no-fund && node tools/audio/generate.mjs",
+    "sprites": "npm --prefix tools/sprites install --no-audit --no-fund && node tools/sprites/build.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.80.1",
+    "three": "0.149.0"
+  },
+  "devDependencies": {
+    "sql.js": "1.12.0",
+    "vite": "6.3.5"
+  }
+}

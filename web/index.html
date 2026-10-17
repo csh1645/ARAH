@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
   <main id="app">
@@ -89,44 +88,7 @@
     </div>
   </main>
 
-  <!-- 로드 순서 = 의존 순서 (doc/standards/coding-standards.md 1·2절) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
-  <!-- Three.js: 전역 THREE 를 쓰는 UMD 빌드 (r160 부터는 모듈 전용이라 r149 로 고정, ADR-0005) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-  <!-- core -->
-  <script src="src/core/util.js"></script>
-  <script src="src/core/storage.js"></script>
-  <script src="src/core/speech.js"></script>
-  <script src="src/core/sfx.js"></script>
-  <!-- data -->
-  <script src="src/data/curriculum.js"></script>
-  <script src="src/data/heroes.js"></script>
-  <script src="src/data/hero-lines.js"></script>
-  <script src="src/data/words.js"></script>
-  <script src="src/data/sentences.js"></script>
-  <script src="src/data/audio-manifest.js"></script>
-  <!-- questions -->
-  <script src="src/questions/math-values.js"></script>
-  <script src="src/questions/math.js"></script>
-  <script src="src/questions/english.js"></script>
-  <script src="src/questions/index.js"></script>
-  <script src="src/questions/review.js"></script>
-  <!-- game: 기반 장면 → 뷰 → 모드들(등록) → 시작 진입점 -->
-  <script src="src/game/hero-art.js"></script>
-  <script src="src/game/round-scene.js"></script>
-  <script src="src/game/travels.js"></script>
-  <script src="src/game/attacks.js"></script>
-  <script src="src/game/views/gate-view-2d.js"></script>
-  <script src="src/game/views/gate-view-3d.js"></script>
-  <script src="src/game/modes/run-mode.js"></script>
-  <script src="src/game/modes/catch-mode.js"></script>
-  <script src="src/game/modes/swing-mode.js"></script>
-  <script src="src/game/modes/gate-mode.js"></script>
-  <script src="src/game/modes/spell-mode.js"></script>
-  <script src="src/game/modes/match-mode.js"></script>
-  <script src="src/game/modes/boss-mode.js"></script>
-  <script src="src/game/launcher.js"></script>
-  <!-- ui -->
-  <script src="src/ui/app.js"></script>
+  <!-- 진입점: 모든 스크립트는 src/main.js 가 순서대로 import 한다 (Vite 가 묶어서 내보냄) -->
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

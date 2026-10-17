@@ -1,22 +1,53 @@
-# 로컬 실행 가이드
+# 로컬 실행 가이드 (Vite)
 
-## 방법 1: 파일 바로 열기
+2026-10-17 부터 Vite 로 실행 · 빌드합니다 ([ADR-0008](../decisions/ADR-0008-vite-content-pipeline.md)). **Node.js LTS** 가 필요합니다.
 
-`web/index.html`을 더블클릭해 Chrome이나 Edge로 엽니다.
-빌드 과정이 없는 일반 스크립트 구조라서 그대로 실행됩니다. (첫 실행에는 인터넷 연결이 필요합니다)
-
-## 방법 2: 로컬 서버 (태블릿에서 테스트할 때)
-
-프로젝트 루트에서 실행합니다.
+## 처음 한 번
 
 ```bash
-python -m http.server 8123 --directory web
+npm install
 ```
 
-* PC 브라우저: `http://localhost:8123`
-* 같은 Wi-Fi의 태블릿: `http://<PC의 IP 주소>:8123` (Windows 방화벽에서 Python 허용이 필요할 수 있습니다)
+## 개발 서버
+
+```bash
+npm run dev
+```
+
+* PC 브라우저: `http://localhost:5173` — 코드를 고치면 바로 새로고침됩니다
+* 같은 Wi-Fi 의 태블릿 · 폰: `npm run dev -- --host` 로 실행한 뒤 표시되는 `Network:` 주소로 접속 (Windows 방화벽에서 Node 허용이 필요할 수 있음)
+* `npm run dev` 는 먼저 콘텐츠 DB 를 검사 · 변환합니다 (`npm run content`)
+
+## 배포용 빌드 확인
+
+```bash
+npm run build
+npm run preview
+```
+
+`dist/` 에 배포 파일이 만들어지고, `http://localhost:4173` 에서 실제 배포와 같은 결과를 볼 수 있습니다.
+
+## 명령 모음
+
+| 명령 | 하는 일 |
+|---|---|
+| `npm run dev` | 콘텐츠 변환 + 개발 서버 |
+| `npm run build` | 콘텐츠 변환 + 배포 파일(`dist/`) |
+| `npm run content` | `content/arah-content.db` → `web/src/data/generated/content.json` (규칙 검사 포함) |
+| `npm run content:export` | DB → `content/arah-content.sql` (사람이 읽는 SQL, git 에서 변경 내용 확인용) |
+| `npm run audio` | 발음 파일이 없는 단어 · 어구 · 문장만 생성 (처음 한 번 모델 약 86MB 내려받기) |
+| `npm run sprites` | 히어로 스프라이트 아틀라스 굽기 (디자이너 그림은 건드리지 않음) |
+
+## 콘텐츠(단어 · 문장) 고치기
+
+1. [DB Browser for SQLite](https://sqlitebrowser.org/) 로 `content/arah-content.db` 를 연다
+2. `words` · `phrases` · `sentences` 표에서 행을 추가 · 수정하고 저장 (규칙은 `content/schema.sql` 머리 주석)
+3. `npm run content` 로 검사 → `npm run dev` 로 확인
+4. 발음: `npm run audio` (또는 push 하면 GitHub Actions 가 자동 생성)
+5. `npm run content:export` 후 `.db` 와 `.sql` 을 함께 커밋
 
 ## 저장 데이터 초기화
 
-모은 별과 설정은 브라우저 localStorage에 `arah.` 접두어로 저장됩니다.
-초기화하려면 브라우저 개발자 도구(F12) → Application → Local Storage에서 `arah.`로 시작하는 항목을 지웁니다.
+모은 별과 설정은 브라우저 localStorage 에 `arah.` 접두어로 저장됩니다.
+초기화하려면 개발자 도구(F12) → Application → Local Storage 에서 `arah.` 로 시작하는 항목을 지웁니다.
+(개발 서버 주소 `localhost:5173` 은 다른 주소와 저장소가 따로라 기록이 섞이지 않습니다. 배포 주소는 같으므로 배포본의 기록은 그대로)

@@ -1,141 +1,20 @@
+import manifest from './audio-manifest.json';
+
 /**
- * @file 단어별 원어민 발음 파일 목록. 발음 생성 도구가 자동으로 다시 쓴다 (직접 고치지 않는다).
+ * @file 단어 · 어구 · 문장의 원어민 발음 파일 목록. 목록 원본은 audio-manifest.json 이고
+ *       발음 생성기(npm run audio, GitHub Actions 자동 실행)가 다시 쓴다 — 직접 고치지 않는다.
  * @layer data
- * @depends 없음
- * @see doc/decisions/ADR-0004-pronunciation.md, web/assets/audio/words/README.md
+ * @depends audio-manifest.json
+ * @see tools/audio/generate.mjs, doc/decisions/ADR-0004-pronunciation.md, web/public/assets/audio/words/README.md
  *
- * 여기에 있는 단어는 web/assets/audio/words/<파일> 을 재생하고, 없는 단어는 기기 음성 합성(TTS)으로 대신 읽는다.
+ * 여기에 있는 글은 web/public/assets/audio/words/<파일> 을 재생하고, 없는 글은 기기 음성 합성(TTS)으로 대신 읽는다.
  */
 (function (A) {
   'use strict';
 
   /** 발음 파일 출처 (라이선스 · 표기 확인용) */
-  A.WORD_AUDIO_SOURCE = "Kokoro-82M (kokoro-js 1.2.0, voice af_heart, speed 0.9), Apache-2.0";
+  A.WORD_AUDIO_SOURCE = manifest.source;
 
-  /** @type {Object<string, string>} 영어 단어(소문자) → 파일 이름 */
-  A.WORD_AUDIO = {
-    "apple": "apple.wav",
-    "banana": "banana.wav",
-    "grape": "grape.wav",
-    "orange": "orange.wav",
-    "strawberry": "strawberry.wav",
-    "lemon": "lemon.wav",
-    "peach": "peach.wav",
-    "watermelon": "watermelon.wav",
-    "dog": "dog.wav",
-    "cat": "cat.wav",
-    "lion": "lion.wav",
-    "tiger": "tiger.wav",
-    "rabbit": "rabbit.wav",
-    "bear": "bear.wav",
-    "pig": "pig.wav",
-    "cow": "cow.wav",
-    "monkey": "monkey.wav",
-    "fish": "fish.wav",
-    "bird": "bird.wav",
-    "spider": "spider.wav",
-    "frog": "frog.wav",
-    "sun": "sun.wav",
-    "moon": "moon.wav",
-    "star": "star.wav",
-    "tree": "tree.wav",
-    "flower": "flower.wav",
-    "rain": "rain.wav",
-    "snow": "snow.wav",
-    "cake": "cake.wav",
-    "milk": "milk.wav",
-    "egg": "egg.wav",
-    "car": "car.wav",
-    "bus": "bus.wav",
-    "book": "book.wav",
-    "ball": "ball.wav",
-    "house": "house.wav",
-    "hat": "hat.wav",
-    "bag": "bag.wav",
-    "pencil": "pencil.wav",
-    "clock": "clock.wav",
-    "duck": "duck.wav",
-    "horse": "horse.wav",
-    "sheep": "sheep.wav",
-    "chicken": "chicken.wav",
-    "mouse": "mouse.wav",
-    "snake": "snake.wav",
-    "turtle": "turtle.wav",
-    "whale": "whale.wav",
-    "shark": "shark.wav",
-    "panda": "panda.wav",
-    "zebra": "zebra.wav",
-    "elephant": "elephant.wav",
-    "giraffe": "giraffe.wav",
-    "dolphin": "dolphin.wav",
-    "penguin": "penguin.wav",
-    "butterfly": "butterfly.wav",
-    "bee": "bee.wav",
-    "ant": "ant.wav",
-    "cloud": "cloud.wav",
-    "fire": "fire.wav",
-    "sea": "sea.wav",
-    "mountain": "mountain.wav",
-    "rainbow": "rainbow.wav",
-    "leaf": "leaf.wav",
-    "bread": "bread.wav",
-    "rice": "rice.wav",
-    "pizza": "pizza.wav",
-    "candy": "candy.wav",
-    "juice": "juice.wav",
-    "water": "water.wav",
-    "cookie": "cookie.wav",
-    "carrot": "carrot.wav",
-    "corn": "corn.wav",
-    "potato": "potato.wav",
-    "tomato": "tomato.wav",
-    "chair": "chair.wav",
-    "bed": "bed.wav",
-    "door": "door.wav",
-    "cup": "cup.wav",
-    "key": "key.wav",
-    "phone": "phone.wav",
-    "robot": "robot.wav",
-    "kite": "kite.wav",
-    "train": "train.wav",
-    "ship": "ship.wav",
-    "plane": "plane.wav",
-    "bike": "bike.wav",
-    "umbrella": "umbrella.wav",
-    "glasses": "glasses.wav",
-    "shoes": "shoes.wav",
-    "shirt": "shirt.wav",
-    "sock": "sock.wav",
-    "crayon": "crayon.wav",
-    "scissors": "scissors.wav",
-    "ruler": "ruler.wav",
-    "computer": "computer.wav",
-    "piano": "piano.wav",
-    "drum": "drum.wav",
-    "guitar": "guitar.wav",
-    "eye": "eye.wav",
-    "ear": "ear.wav",
-    "nose": "nose.wav",
-    "hand": "hand.wav",
-    "foot": "foot.wav",
-    "baby": "baby.wav",
-    "boy": "boy.wav",
-    "girl": "girl.wav",
-    "red": "red.wav",
-    "blue": "blue.wav",
-    "green": "green.wav",
-    "yellow": "yellow.wav",
-    "black": "black.wav",
-    "white": "white.wav",
-    "one": "one.wav",
-    "two": "two.wav",
-    "three": "three.wav",
-    "four": "four.wav",
-    "five": "five.wav",
-    "six": "six.wav",
-    "seven": "seven.wav",
-    "eight": "eight.wav",
-    "nine": "nine.wav",
-    "ten": "ten.wav"
-  };
+  /** @type {Object<string, string>} 영어 단어 · 어구 · 문장(소문자 원문) → 파일 이름 */
+  A.WORD_AUDIO = manifest.files;
 })(window.ARAH);

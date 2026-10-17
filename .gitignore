@@ -21,3 +21,9 @@ __pycache__/
 
 # Vercel
 .vercel/
+
+# Node · Vite (package-lock.json 은 커밋한다)
+node_modules/
+dist/
+# 콘텐츠 빌드 산출물 — content/arah-content.db 에서 npm run content 로 매번 만든다
+web/src/data/generated/

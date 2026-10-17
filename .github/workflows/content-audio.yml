@@ -1,0 +1,55 @@
+# 콘텐츠 DB(content/arah-content.db)가 바뀌어 push 되면:
+#   1) 규칙 검사 (npm run content — 빈칸 단어 · 오답 겹침 등. 어기면 실패)
+#   2) 새 단어 · 어구 · 문장의 발음 파일만 생성 (npm run audio, Kokoro-82M)
+#   3) 사람이 읽을 수 있는 SQL 내보내기 (npm run content:export)
+#   4) 결과를 같은 브랜치에 커밋 → Vercel 이 그 커밋을 배포
+# 이 작업이 만든 커밋은 .db 를 바꾸지 않으므로 다시 이 작업을 부르지 않는다 (무한 반복 없음).
+# @see doc/decisions/ADR-0008-vite-content-pipeline.md
+name: content-audio
+
+on:
+  push:
+    branches: [main]
+    paths: ['content/arah-content.db']
+  workflow_dispatch: # 수동 실행 (Actions 탭 → Run workflow)
+
+permissions:
+  contents: write # 생성한 발음 파일을 커밋하기 위해
+
+concurrency:
+  group: content-audio
+  cancel-in-progress: false
+
+jobs:
+  audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: 음성 모델 캐시 (약 86MB, 매번 내려받지 않게)
+        uses: actions/cache@v4
+        with:
+          path: tools/audio/node_modules/@huggingface/transformers/.cache
+          key: kokoro-82m-v1.0-q8
+      - name: 콘텐츠 규칙 검사
+        run: npm run content
+      - name: 새 발음 파일 생성
+        run: npm run audio
+      - name: SQL 내보내기
+        run: npm run content:export
+      - name: 결과 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/assets/audio/words web/src/data/audio-manifest.json content/arah-content.sql
+          if git diff --cached --quiet; then
+            echo "바뀐 발음 파일 없음"
+          else
+            git commit -m "content: 발음 파일 자동 생성 (content-audio)"
+            git push
+          fi

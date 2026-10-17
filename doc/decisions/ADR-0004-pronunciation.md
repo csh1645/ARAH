@@ -5,7 +5,8 @@
 ## 최종 결정 요약
 
 * 발음 파일: `web/assets/audio/words/<단어>.wav` (24kHz 모노, 앞뒤 무음 제거 · 음량 정규화, 단어당 약 30KB)
-* 생성: `python tools/audio/collect_server.py` → `http://127.0.0.1:8124/tools/audio/kokoro-generate.html` → [생성 시작]. 이미 있는 파일은 건너뛰므로 **단어를 추가하면 새 단어만** 만든다
+* 생성: `npm run audio` (Node 용 kokoro-js, 2026-10-17 부터 — [ADR-0008](ADR-0008-vite-content-pipeline.md)). 이미 있는 파일은 건너뛰므로 **새 단어 · 문장만** 만든다. 콘텐츠 DB 를 push 하면 GitHub Actions 가 자동 실행
+  * (예전: 브라우저 생성 도구 `kokoro-generate.html` + `collect_server.py` — 폐지)
 * 라이선스: Kokoro-82M 가중치 Apache-2.0 (`audio-manifest.js`의 `WORD_AUDIO_SOURCE`에 기록)
 * 안드로이드 · iOS 에 TTS 설치를 안내할 필요 없음 (일반 오디오 파일 재생). 기기 음성은 파일이 없을 때만 대체
 * 다음 단계: GitHub Actions 자동 생성 + 문장 지원 ([고도화 검토](../planning/enhancement-review.md) 2절)
@@ -39,7 +40,7 @@
 
 * **완료:** 파일 우선 재생 + 기기 음성 대체 구조 (`core/speech.js`, `data/audio-manifest.js`)
 * **완료:** 모바일 자동재생 제한 대응 ('출동!' 버튼에서 오디오 잠금 해제)
-* **완료:** 생성 스크립트 `tools/audio/generate_word_audio.py` (Google Cloud TTS, 키는 환경 변수로만 전달)
+* (폐지 2026-10-17) Google Cloud TTS 생성 스크립트 — Kokoro 로 충분해 삭제
 * **남은 일:** 파일 출처를 정하고 40개 파일 생성
 
 ### 파일 출처 후보 (2026-10-10 조사)
@@ -49,7 +50,7 @@
 | **kokoro-js** (Kokoro-82M, Apache 2.0 가중치) | 브라우저에서 모델 실행. 미국 영어 음성 `af_heart`(등급 A), `af_bella`(A-) | **유력.** 계정 · API 키 불필요. 게임 안에서 매번 돌리면 모델(q8 약 86MB)을 받아야 하므로, **개발 도구 페이지에서 한 번만 생성해 wav를 커밋**한다 |
 | Piper (WASM) | 브라우저 · 로컬 실행, 음성 다수 | 대안. 공식 JS 라이브러리 현황은 추가 확인 필요 |
 | Kitten TTS | 약 24MB 경량 모델 | 용량은 작지만 음질 평가가 가장 낮음 |
-| Google Cloud TTS | 클라우드 API (`tools/audio/generate_word_audio.py`) | 품질 좋음. 계정 · API 키 필요 |
+| Google Cloud TTS | 클라우드 API (스크립트는 2026-10-17 삭제) | 품질 좋음. 계정 · API 키 필요 |
 | 브라우저 내장 음성 (현재) | 기기별 음성 | 기기마다 소리가 달라 요구사항 불충족 |
 
 참고: kokoro-js README (jsDelivr, v1.2.0), 브라우저 TTS 비교 글(offlinetts.com, 운영사 자체 벤치마크라 참고용)
