@@ -28,7 +28,8 @@
 | 근접 팀(거인 · 표범)은 모든 놀이에서 쏘지 않고 직접 뛰어올라 때림 | ✅ 기반 `meleeTo()` (드론 잡기 · 철자 잇기 · 보스 배틀 공통) |
 | 히어로 대사 말풍선: 팀별 말투 8종 + 48명 한마디 (`data/hero-lines.js`, 기반 `heroSay()`) | ✅ [game-design 9.2](doc/planning/game-design.md) |
 | 새 히어로 합류 축하: 카드 눌러 뒤집기 · 색종이 · 한마디 (`ui/app.js` celebrateJoin) | ✅ |
-| **다음 후보 (사용자 결정 대기)** — 사용자: "1 · 2번 진행 뒤 고민" | ⏳ 남은 제안: ③ 오늘의 미션 · 출석 스타 ④ 보스 종류 추가 · 처치 도감 ⑤ 스티커 · 칭호. 사용자가 고르기 전에는 시작하지 않는다 |
+| 🏃 히어로 러너 (7번째 놀이, 시험 중): "게임이 먼저, 문제는 파워업" — 점프로 상자 · 코인, 정답 구슬을 잡으면 파워업, 6문제 | ✅ `modes/run-mode.js` ([ADR-0006](doc/decisions/ADR-0006-game-first-runner.md), [game-design 3.7](doc/planning/game-design.md)). 메뉴 맨 앞 NEW, 처음 한 번 미리 선택 |
+| **다음 판단 (사용자 · 아이 반응 대기)** — 배경: 사용자 "단순해서 흥미가 없다" (2026-10-17) | ⏳ 러너 반응이 좋으면 ADR-0006 의 확장 순서: ② 모험 지도 · 스테이지 별 3개 ③ 판 끝 보물 상자 ④ 버튼 하나로 바로 시작 ⑤ 자동 난이도. 예전 제안(오늘의 미션 · 보스 추가 · 스티커)은 그 뒤. 사용자가 고르기 전에는 시작하지 않는다 |
 | GitHub `csh1645/ARAH` `main` push | ✅ (2026-10-10) |
 | Vercel 배포 | ✅ https://arah-web-olive.vercel.app/ (Root Directory `web`, `main` push 시 자동 배포). 배포본에서 4개 모드 시작 · 콘솔 오류 0 확인 |
 | 원어민 발음 파일 40개 | ✅ kokoro-js(Kokoro-82M, `af_heart`)로 생성 · 적용. 단어 추가 시 생성 절차: [web/assets/audio/words/README.md](web/assets/audio/words/README.md) |
@@ -82,6 +83,7 @@ web/src/
   * 빌딩 스윙: `s.choose(s.targets.find(b => b.isCorrect))`
   * 문 통과(2D · 3D): `s.setLane(correct.lane); s.dash = true`
   * 철자 잇기: `s.pick(s.blocks.find(b => !b.used && b.ch === s.word[s.idx]))`, 또는 `window` 에 `KeyboardEvent('keydown', {key, keyCode})` 디스패치
+  * 히어로 러너: 30ms 마다 `s.segment === 'quiz'` 이면 정답 구슬 `t` 가 `t.c.x - s.player.x` 40~95px 일 때 `s.jump()` (땅에 있을 때). 바로 정답 처리는 `s.grabOrb(s.orbs.find(o => o.isCorrect))`
 * **로컬 서버 캐시 주의:** `python -m http.server`는 바뀐 JS 를 캐시에서 내줄 수 있다 → 테스트 전 `fetch(url, {cache:'reload'})` 후 새로고침
 * **브라우저 창이 가려지면 게임 루프가 멈춘다** (`document.hidden`, frame 0). 테스트 전 `tabs_select`로 탭을 앞으로
   * 문제 생성기 검증: `ARAH.makeQuestion(subject, level, opts)`를 수천 번 호출해 정답 1개 · 보기 중복 없음 · 음수 없음 확인

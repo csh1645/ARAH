@@ -1,6 +1,7 @@
 /**
  * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(팀 스타 · 히어로 합류 · 마지막 선택) 관리.
- *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review
+ *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review,
+ *       runIntroduced(새 놀이 히어로 러너를 한 번 먼저 골라 뒀는지)
  * @layer ui
  * @depends A.storage, A.speak, A.MODES, A.SUBJECTS, A.LEVELS, A.RULES, A.HEROES, A.findHero, A.drawHero,
  *          A.findFamily, A.heroLine, A.Sfx, A.GAME_MODES, A.startGame
@@ -18,7 +19,7 @@
   const state = {
     stars: store.get('stars', 0),
     heroId: store.get('hero', 'red'),
-    mode: store.get('mode', 'catch'),
+    mode: store.get('mode', 'run'),
     subject: store.get('subject', 'add'),
     level: store.get('level', 1),
   };
@@ -27,6 +28,11 @@
   state.mode = (A.MODE_ALIASES && A.MODE_ALIASES[state.mode]) || state.mode; // 예: 3D 문 통과 → 문 통과
   if (!A.SUBJECTS.some((s) => s.id === state.subject)) state.subject = 'add';
   if (typeof state.stars !== 'number' || !(state.stars >= 0)) state.stars = 0;
+  // 새 놀이(히어로 러너)는 한 번만 먼저 골라 둔다 — 시험 놀이를 아이가 바로 해 보도록 (이후에는 아이의 선택 유지)
+  if (!store.get('runIntroduced', false)) {
+    state.mode = 'run';
+    store.set('runIntroduced', true);
+  }
   let game = null;
 
   // ---------- 팀 스타 · 히어로 합류 ----------
@@ -259,6 +265,9 @@
     }
     // 이전 판이 남아 있으면 정리한다 (게임이 두 개 겹쳐 도는 것 방지)
     stopGame();
+    // 합류 축하 창이 떠 있으면 닫는다 (게임 화면 위에 남아 조작을 가리지 않게)
+    joinQueue = [];
+    $('#joinOverlay').hidden = true;
     // 방금 누른 버튼(출동 · 다시 하기)에 포커스가 남아 있으면, 게임 중 스페이스를 눌렀을 때
     // 숨겨진 그 버튼이 다시 눌려 새 판이 시작된다. 포커스를 풀어 키 입력이 게임으로만 가게 한다.
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();

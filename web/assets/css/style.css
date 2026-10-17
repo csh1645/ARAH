@@ -190,3 +190,17 @@ h2 { margin: 28px 0 12px; font-size: 22px; font-weight: normal; color: var(--acc
   .join-back, .join-title, .join-line { animation: none; }
   .join-confetti { display: none; }
 }
+/* 폰 가로(높이가 낮은 화면): 카드를 줄여 뒤집은 뒤의 한마디 · 확인 버튼까지 한 화면에 들어오게 */
+@media (max-height: 520px) {
+  .join-overlay { gap: 6px; padding: 8px; }
+  .join-title { font-size: 22px; }
+  .join-card { width: 170px; height: 196px; }
+  .join-star { font-size: 56px; }
+  .join-tap { font-size: 16px; }
+  .join-front { gap: 2px; }
+  .join-front canvas { width: 72px !important; height: 81px !important; } /* heroCanvas 의 인라인 크기를 덮어쓴다 */
+  .join-name { font-size: 20px; }
+  .join-ability { font-size: 13px; }
+  .join-line { font-size: 17px; padding: 6px 14px; }
+  #joinOk { margin: 0; min-height: 44px; padding: 8px 24px; }
+}

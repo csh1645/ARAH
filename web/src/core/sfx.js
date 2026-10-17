@@ -119,6 +119,10 @@
     win: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone({ f, dur: 0.3, type: 'triangle', vol: 0.25, at: i * 0.11 })), // 승리
     lose: () => [392, 330, 262].forEach((f, i) => tone({ f, dur: 0.35, type: 'triangle', vol: 0.2, at: i * 0.18 })), // 아쉬움
     click: () => tone({ f: 1000, dur: 0.05, type: 'square', vol: 0.06 }),
+    jump: () => tone({ f: 330, to: 660, dur: 0.12, type: 'square', vol: 0.07 }), // 점프 (러너)
+    coin: () => { tone({ f: 1319, dur: 0.06, type: 'square', vol: 0.06 }); tone({ f: 1760, dur: 0.1, type: 'square', vol: 0.06, at: 0.05 }); }, // 코인 띠링
+    powerUp: () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone({ f, dur: 0.1, type: 'square', vol: 0.08, at: i * 0.05 })), // 파워업 상승음
+    smash: () => { noise({ dur: 0.2, filter: 'lowpass', f: 900, vol: 0.4 }); tone({ f: 140, to: 60, dur: 0.18, type: 'square', vol: 0.12 }); }, // 상자 부수기
   };
 
   // ---------- 배경음 (간단한 반복 곡을 그때그때 합성) ----------

@@ -132,8 +132,8 @@
       // 오답 복습은 복습 노트에 있는 문제 수만큼만 낸다 (최대 한 판 문제 수)
       this.reviewKind = this.questionOptions().spelling ? 'spell' : 'choice';
       this.totalQuestions = this.opts.subject === 'review'
-        ? Math.max(1, Math.min(A.RULES.questionsPerRound, A.Review.count(this.reviewKind)))
-        : A.RULES.questionsPerRound;
+        ? Math.max(1, Math.min(this.questionCount(), A.Review.count(this.reviewKind)))
+        : this.questionCount();
 
       this.createFxTextures();
       this.burster = this.add.particles(0, 0, 'fx-spark', {
@@ -169,6 +169,8 @@
       if (this.hearts <= 0) return '조금만 더 힘내요!';
       return perfect ? '퍼펙트 미션!' : '미션 완료!';
     }
+    /** 한 판의 문제 수 (짧은 판을 원하는 모드가 바꾼다, 예: 러너) */
+    questionCount() { return A.RULES.questionsPerRound; }
     /** 이 모드가 원하는 문제 형식 (예: 그림 보기). @returns {QuestionOptions} */
     questionOptions() { return {}; }
     createWorld() {}

@@ -13,6 +13,7 @@
 | 결정 | [decisions/ADR-0003-game-mode-architecture.md](decisions/ADR-0003-game-mode-architecture.md) | 게임 모드 구조, 새 모드 추가 절차 |
 | 결정 | [decisions/ADR-0004-pronunciation.md](decisions/ADR-0004-pronunciation.md) | 영어 발음 (미국 원어민 기준) 방안 |
 | 결정 | [decisions/ADR-0005-threejs-3d.md](decisions/ADR-0005-threejs-3d.md) | Three.js 3D 적용 (규칙 · 화면 분리) |
+| 결정 | [decisions/ADR-0006-game-first-runner.md](decisions/ADR-0006-game-first-runner.md) | "게임이 먼저, 문제는 파워업" 히어로 러너 시험 |
 | 가이드 | [guides/deploy-vercel.md](guides/deploy-vercel.md) | Vercel 배포 설정 |
 | 품질 | [qa/test-report-2026-10-10.md](qa/test-report-2026-10-10.md) | 테스트 보고서 (세 모드 완주, 버그 3건 수정) |
 | 표준 | [standards/coding-standards.md](standards/coding-standards.md) | 개발 표준: 구조, 이름, 주석, 보안, 변경 관리 |

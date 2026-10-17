@@ -31,6 +31,7 @@
    * @type {{id: string, label: string, icon: string, desc: string}[]}
    */
   A.MODES = [
+    { id: 'run', label: '히어로 러너', icon: '🏃', desc: 'NEW · 달리고 점프! 정답 구슬을 잡으면 파워업', isNew: true },
     { id: 'catch', label: '드론 잡기', icon: '🎯', desc: '조준 · 내려오는 정답 드론을 줄로 맞혀요' },
     { id: 'swing', label: '빌딩 스윙', icon: '🏙️', desc: '선택 · 정답 빌딩으로 줄을 타고 날아가요' },
     { id: 'gate', label: '문 통과', icon: '🚪', desc: '3D 달리기 · 정답 문이 있는 줄로 달려가요' },
@@ -77,5 +78,15 @@
     reviewMasterBox: 3,
     /** 복습 노트 최대 문제 수 (넘치면 오래된 것부터 지운다) */
     reviewMaxItems: 200,
+
+    // ----- 히어로 러너 (modes/run-mode.js) -----
+    // "게임이 먼저, 문제는 파워업": 달리기 · 점프 자체가 재미있고, 정답이 다음 달리기 구간의 파워업이 된다
+    /** 러너 한 판의 문제 수. 한 판이 1~2분으로 짧아야 "한 판 더" 하게 된다 */
+    runQuestionsPerRound: 6,
+    /** 단계별 달리는 속도 (px/초). 문제 구간에서는 runQuizSpeedRate 배로 느려져 읽을 시간을 준다 */
+    runSpeedByLevel: { 1: 300, 2: 320, 3: 340, 4: 360, 5: 380, 6: 400 },
+    runQuizSpeedRate: 0.75,
+    /** 문제 사이 달리기 구간 (초). 정답이면 이 구간 동안 파워업이 켜진다 */
+    runSegmentSec: 4.5,
   };
 })(window.ARAH);
