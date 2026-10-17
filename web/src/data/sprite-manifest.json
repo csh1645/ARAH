@@ -110,6 +110,20 @@
   "gamora": "assets/sprites/heroes/gamora",
   "chiikawa": "assets/sprites/heroes/chiikawa",
   "hachiware": "assets/sprites/heroes/hachiware",
-  "usagi": "assets/sprites/heroes/usagi"
+  "usagi": "assets/sprites/heroes/usagi",
+  "luffy": "assets/sprites/heroes/luffy",
+  "zoro": "assets/sprites/heroes/zoro",
+  "nami": "assets/sprites/heroes/nami",
+  "usopp": "assets/sprites/heroes/usopp",
+  "sanji": "assets/sprites/heroes/sanji",
+  "chopper": "assets/sprites/heroes/chopper",
+  "robin": "assets/sprites/heroes/robin",
+  "franky": "assets/sprites/heroes/franky",
+  "brook": "assets/sprites/heroes/brook",
+  "jinbe": "assets/sprites/heroes/jinbe",
+  "ace": "assets/sprites/heroes/ace",
+  "shanks": "assets/sprites/heroes/shanks",
+  "hangyodon": "assets/sprites/heroes/hangyodon",
+  "law": "assets/sprites/heroes/law"
  }
 }
