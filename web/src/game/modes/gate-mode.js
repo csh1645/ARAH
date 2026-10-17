@@ -80,6 +80,11 @@
       return GateScene.use3D();
     }
 
+    /** 문 통과는 자기만의 3D 화면(views/gate-view-3d.js)을 쓰므로 공통 3D 무대는 쓰지 않는다 */
+    static get useStage3D() {
+      return false;
+    }
+
     introText() {
       return GateScene.use3D()
         ? `${this.hero.name} 출동!\n하늘 다리를 달려 정답 문으로!`

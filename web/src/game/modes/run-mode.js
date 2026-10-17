@@ -4,7 +4,7 @@
  *       문제가 나오면 정답 구슬들이 하늘에 줄지어 다가오고, 정답 구슬만 점프해서 잡으면
  *       다음 달리기 구간 동안 파워업(거대화 · 무적 별 · 자석 · 코인 비)이 켜진다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.Props3D (3D 무대일 때)
  * @see doc/planning/game-design.md (3.7 히어로 러너)
  *
  * 판정: 정답 구슬을 잡음 → 정답 + 파워업 / 오답 구슬을 잡음 → 하트 -1 (같은 문제의 다른 구슬은 계속 다가옴)
@@ -91,8 +91,11 @@
       this.power = null; // { id, until }
       this.baseSpeed = A.RULES.runSpeedByLevel[this.opts.level] * (this.ab.slow || 1);
 
-      this.drawSky();
-      this.makeScrollLayers();
+      if (this.stage3d) this.stage3d.setGround(GROUND_Y); // 3D: 도시 · 옥상이 3D 로 흐른다 (scroll)
+      else {
+        this.drawSky();
+        this.makeScrollLayers();
+      }
 
       this.createHero(HERO_X, this.groundHeroY());
       this.setHeroBase('run');
@@ -331,6 +334,10 @@
       g.lineBetween(-CRATE / 2 + 4, -CRATE + 4, CRATE / 2 - 4, -4);
       g.lineBetween(CRATE / 2 - 4, -CRATE + 4, -CRATE / 2 + 4, -4);
       const c = this.add.container(x, GROUND_Y, [g]).setDepth(DEPTH.world + 1);
+      if (this.stage3d) {
+        g.setVisible(false);
+        this.stage3d.follow(c, A.Props3D.crate(CRATE), { dy: -CRATE / 2, fade: true });
+      }
       this.crates.push({ c, done: false });
     }
 
@@ -344,7 +351,12 @@
       g.lineStyle(3, 0xe09f00, 1);
       g.strokeCircle(0, 0, 13);
       c.add(g);
-      this.tweens.add({ targets: c, scaleX: 0.25, duration: 300, yoyo: true, repeat: -1 }); // 빙글빙글
+      if (this.stage3d) { // 3D 금화가 진짜로 빙글빙글 돈다
+        g.setVisible(false);
+        this.stage3d.follow(c, A.Props3D.coin(), { spin: 5, fade: true });
+      } else {
+        this.tweens.add({ targets: c, scaleX: 0.25, duration: 300, yoyo: true, repeat: -1 }); // 빙글빙글 (2D)
+      }
       this.coins.push({ c, done: false });
     }
 
@@ -407,9 +419,12 @@
       if (time < this.stumbleUntil) v *= STUMBLE_RATE;
       if (this.hasPower('star')) v *= STAR_SPEED_RATE;
       const dx = v * s;
-      this.farLayer.tilePositionX += dx * 0.2;
-      this.nearLayer.tilePositionX += dx * 0.45;
-      this.groundLayer.tilePositionX += dx;
+      if (this.stage3d) this.stage3d.scroll(dx);
+      else {
+        this.farLayer.tilePositionX += dx * 0.2;
+        this.nearLayer.tilePositionX += dx * 0.45;
+        this.groundLayer.tilePositionX += dx;
+      }
 
       // 점프 물리
       const prevBottom = p.y + HERO_HALF_H * this.heroScale;

@@ -1,7 +1,7 @@
 /**
  * @file 🎯 드론 잡기 모드. 차원 포털에서 내려오는 드론 중 정답 드론을 거미줄로 맞힌다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.Props3D (3D 무대일 때), A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.1 드론 잡기)
  *
  * 판정: 정답 명중 → 다음 문제 / 오답 명중 → 하트 -1, 같은 문제 계속 / 정답 드론 놓침 → 하트 -1, 다음 문제
@@ -19,6 +19,7 @@
   const PORTAL_Y = 135; // 드론이 나오는 차원 포털 높이
   const MISS_Y = 468; // 정답 드론 중심이 이 선을 넘으면 놓친 것
   const HERO_Y = 548;
+  const GROUND_Y = 600; // 옥상 바닥 윗면
   const DRONE_MARGIN_X = 130; // 맨 왼쪽 · 오른쪽 드론의 가장자리 여백
   const DRONE_H = 64;
 
@@ -51,24 +52,23 @@
       this.lastFire = -9999;
       this.fallSpeed = A.RULES.fallSpeedByLevel[this.opts.level] * (this.ab.slow || 1);
 
-      this.drawSky();
-      const g = this.add.graphics().setDepth(DEPTH.bg);
-      this.drawCity(g, 600, 0x1a1f45, [130, 300]);
-      // 옥상 바닥과 위험선
-      g.fillStyle(0x2a2e5c, 1);
-      g.fillRect(0, 600, W, 40);
-      g.lineStyle(3, 0x4a4f8c, 1);
-      g.lineBetween(0, 600, W, 600);
-      g.lineStyle(2, 0xff4d6d, 0.45);
-      for (let dx = 0; dx < W; dx += 24) g.lineBetween(dx, MISS_Y + DRONE_H / 2 + 2, dx + 12, MISS_Y + DRONE_H / 2 + 2);
+      this.drawBackdrop({ city: { baseY: GROUND_Y, color: 0x1a1f45, range: [130, 300] }, ground: { y: GROUND_Y, h: 40 } });
+      // 위험선 (정답 드론이 여기를 넘으면 놓친 것) — 규칙을 알려 주는 표시라 3D 에서도 2D 로 그린다
+      const line = this.add.graphics().setDepth(DEPTH.bg + 1);
+      line.lineStyle(2, 0xff4d6d, 0.6);
+      for (let dx = 0; dx < W; dx += 24) line.lineBetween(dx, MISS_Y + DRONE_H / 2 + 2, dx + 12, MISS_Y + DRONE_H / 2 + 2);
 
-      // 드론이 나오는 차원 포털
+      // 드론이 나오는 차원 포털 (3D 무대면 3D 고리가 대신한다)
       const portal = this.add.graphics({ x: W / 2, y: PORTAL_Y }).setDepth(DEPTH.bg);
       [[0x7b2ff7, 220, 50], [0x00d4ff, 160, 36], [0xff4fd8, 100, 22]].forEach(([c, pw, ph]) => {
         portal.lineStyle(5, c, 0.7);
         portal.strokeEllipse(0, 0, pw, ph);
       });
       this.tweens.add({ targets: portal, scaleX: 1.12, scaleY: 0.9, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      if (this.stage3d) {
+        portal.setVisible(false);
+        this.stage3d.follow(portal, A.Props3D.portal(), { z: -1 });
+      }
 
       this.createHero(W / 2, HERO_Y);
       this.startHeroBob();
@@ -115,7 +115,7 @@
         this.tweens.add({ targets: r, scaleX: 0.15, duration: 70, yoyo: true, repeat: -1 });
         return r;
       });
-      const g = this.add.graphics();
+      const g = this.add.graphics(); // 2D 몸통 (3D 무대면 3D 드론이 대신한다)
       g.fillStyle(0x8d99ae, 1);
       g.fillRect(-w / 2 + 23, -h / 2 - 8, 4, 8);
       g.fillRect(w / 2 - 27, -h / 2 - 8, 4, 8);
@@ -125,12 +125,18 @@
       g.strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
       g.fillStyle(0xff3355, 1);
       g.fillCircle(0, h / 2 + 6, 4);
+      const mark = this.add.graphics(); // 가짜 드론 X 표시 (3D 에서도 보이게 따로)
       if (decoy) {
-        g.lineStyle(4, 0x9a9a9a, 1);
-        g.lineBetween(-w / 2 + 12, -h / 2 + 10, w / 2 - 12, h / 2 - 10);
+        mark.lineStyle(4, 0x9a9a9a, 1);
+        mark.lineBetween(-w / 2 + 12, -h / 2 + 10, w / 2 - 12, h / 2 - 10);
       }
 
-      const c = this.add.container(W / 2, PORTAL_Y, [...rotors, g, text]).setDepth(DEPTH.world).setScale(0.2).setAlpha(0);
+      const c = this.add.container(W / 2, PORTAL_Y, [...rotors, g, mark, text]).setDepth(DEPTH.world).setScale(0.2).setAlpha(0);
+      if (this.stage3d) {
+        g.setVisible(false);
+        rotors.forEach((r) => r.setVisible(false));
+        this.stage3d.follow(c, A.Props3D.drone(w, h), { fade: true });
+      }
       const d = { c, text, w, h, isCorrect, decoy, done: false, y: PORTAL_Y, baseX: W / 2, phase: Math.random() * 6 };
       // 포털에서 튀어나와 자기 자리로 퍼진다
       this.tweens.add({ targets: c, scale: 1, alpha: decoy ? 0.3 : 1, duration: 500, delay, ease: 'Back.Out' });

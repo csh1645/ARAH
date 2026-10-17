@@ -12,6 +12,7 @@ import './styles/style.css'; // 화면 스타일 (Vite 가 묶어서 내보냄)
 
 // core
 import './core/util.js';
+import './core/theme.js'; // 디자인 토큰 (CSS 변수도 여기서 만든다)
 import './core/storage.js';
 import './core/speech.js';
 import './core/sfx.js';
@@ -35,6 +36,13 @@ import './questions/review.js';
 // game
 import './game/hero-art.js';
 import './game/round-scene.js';
+import './game/three/assets3d.js'; // 3D: 모델 불러오기 → 슈트 입히기 → 3D 히어로 → 무대 → 소품 (round-scene 다음: A.GAME 사용)
+import './game/three/toon.js';
+import './game/three/hero-suit.js';
+import './game/three/hero3d.js';
+import './game/three/stage3d.js';
+import './game/three/props3d.js';
+import './game/three/showcase.js'; // 메뉴 로비: 3D 히어로 무대 · 초상화
 import './game/travels.js';
 import './game/attacks.js';
 import './game/views/gate-view-2d.js';

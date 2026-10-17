@@ -12,7 +12,8 @@
     "content:import": "node scripts/content-import-legacy.mjs",
     "content:export": "node scripts/content-export.mjs",
     "audio": "npm --prefix tools/audio install --no-audit --no-fund && node tools/audio/generate.mjs",
-    "sprites": "npm --prefix tools/sprites install --no-audit --no-fund && node tools/sprites/build.mjs"
+    "sprites": "npm --prefix tools/sprites install --no-audit --no-fund && node tools/sprites/build.mjs",
+    "models": "npm --prefix tools/models install --no-audit --no-fund && node tools/models/build-heroes.mjs"
   },
   "dependencies": {
     "phaser": "3.80.1",

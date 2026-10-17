@@ -64,11 +64,7 @@
       this.wrongCount = 0;
       this.web = null; // { to: {x, y}, color } — 값이 있는 동안 손에서 to 까지 거미줄을 그린다
 
-      this.drawSky();
-      const g = this.add.graphics().setDepth(DEPTH.bg);
-      this.drawCity(g, 600, 0x1a1f45, [110, 250]);
-      g.fillStyle(0x2a2e5c, 1);
-      g.fillRect(0, 600, W, 40);
+      this.drawBackdrop({ city: { baseY: 600, color: 0x1a1f45, range: [110, 250] }, ground: { y: 600, h: 40 } });
 
       this.createHero(W / 2, HERO_Y);
       this.startHeroBob();

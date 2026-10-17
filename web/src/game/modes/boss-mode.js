@@ -1,7 +1,7 @@
 /**
  * @file 👾 보스 배틀 모드 (연속 정답). 체력바가 있는 거대 악당 로봇과 싸운다.
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.Props3D (3D 무대일 때), A.ATTACKS (팀 공격 스타일, round-scene.drawAttack 경유)
  * @see doc/planning/game-design.md (3.6 보스 배틀)
  *
  * 판정: 정답 버튼 → 팀 공격으로 보스 체력 -1 (3콤보 이상이면 크리티컬 -2)
@@ -58,11 +58,8 @@
       this.shot = null; // { to } 히어로 공격 투사체 머리 (모양은 팀 공격 스타일)
       this.enemyShot = null; // { from, to } 보스 레이저
 
-      this.drawSky();
-      const g = this.add.graphics().setDepth(DEPTH.bg);
-      this.drawCity(g, 640, 0x1a1f45, [120, 260]);
-      g.fillStyle(0x2a2e5c, 1);
-      g.fillRect(0, 500, W, 140); // 아래쪽 버튼 영역 바닥
+      // 아래쪽은 답 버튼이 놓이는 바닥 (3D 면 옥상 윗면이 히어로 발밑 높이)
+      this.drawBackdrop({ city: { baseY: 640, color: 0x1a1f45, range: [120, 260] }, ground: { y: this.stage3d ? 510 : 500 } });
 
       this.createHero(HERO_X, HERO_Y, 1.3);
       this.startHeroBob(5);
@@ -113,6 +110,10 @@
       const flash = this.add.rectangle(0, -5, 240, 200, 0xffffff, 0).setOrigin(0.5); // 맞았을 때 번쩍임
       this.bossC = this.add.container(BOSS_X, BOSS_Y, [g, flash]).setDepth(DEPTH.world);
       this.bossFlash = flash;
+      if (this.stage3d) { // 3D 로봇이 2D 보스 자리를 따라간다 (맞을 때 흔들림 · 격파 연출도 그대로)
+        g.setVisible(false);
+        this.stage3d.follow(this.bossC, A.Props3D.boss(b), { z: -2.2, fade: true, onUpdate: (m, o, dt) => { m.rotation.y = Math.sin(this.time.now / 900) * 0.25; } });
+      }
       this.tweens.add({ targets: this.bossC, y: BOSS_Y - 10, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     }
 

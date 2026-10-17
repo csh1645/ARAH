@@ -2,7 +2,7 @@
  * @file 🌆 문 통과 모드의 3D 화면 (Three.js). 도시 위 하늘 다리를 달리는 3인칭 시점.
  *       규칙 · 판정은 modes/gate-mode.js 가 그대로 담당하고, 이 파일은 그리기만 한다.
  * @layer game
- * @depends THREE (Three.js r149, 전역), A.GAME, A.util, A.drawHero
+ * @depends THREE (Three.js r149, 전역), A.GAME, A.util, A.drawHero, A.Hero3D · A.Assets3D · A.createUnderlay · A.disposeTree3D (game/three)
  * @see web/src/game/modes/gate-mode.js (GateView typedef), doc/decisions/ADR-0005-threejs-3d.md
  *
  * 화면 구성: Three.js 캔버스(뒤) + Phaser 캔버스(앞, 투명). 문제 · 하트 · 점수 HUD 와 파티클 등
@@ -30,6 +30,7 @@
   const ROAD_NEAR_Z = 20; // 도로 앞끝 (카메라 뒤까지 이어져야 화면 아래가 끊기지 않는다)
   const CITY_COUNT = 46;
   const CITY_SPAN = 170; // 건물을 재활용하는 구간 길이
+  const HERO_3D_H = 1.75; // 3D 히어로 키 (예전 스프라이트 높이 1.63 과 비슷하게)
   const RUN_SPEED = 14; // 배경이 흐르는 속도 (단위/초). 대시 때는 배수
   const HERO_RUN_FRAME_MS = 110; // 달리기 프레임 바꾸는 간격 (2D round-scene 과 같은 값)
   const HERO_CHEER_MS = 600; // 문을 통과하고 만세 자세를 보여 주는 시간
@@ -95,12 +96,8 @@
     // ---------- 만들기 ----------
 
     build(startLane) {
-      const parent = document.getElementById('game');
-      this.phaserCanvas = this.s.game.canvas;
-      const r = new THREE.WebGLRenderer({ antialias: true });
-      r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      r.domElement.className = 'three-layer';
-      parent.insertBefore(r.domElement, parent.firstChild);
+      this.underlay = A.createUnderlay(this.s); // Phaser 캔버스 뒤 3D 캔버스 (공통 무대와 같은 도구)
+      const r = this.underlay.renderer;
       this.renderer = r;
 
       const scene = new THREE.Scene();
@@ -199,7 +196,20 @@
       const colors = [0x2a2f63, 0x23284f, 0x2d2350, 0x1f3350];
       const half = (this.n * LANE_GAP) / 2;
 
+      const kenney = A.Assets3D && A.Assets3D.get(A.Assets3D.MODELS.city[0]);
       for (let i = 0; i < CITY_COUNT; i++) {
+        if (kenney) { // 3D 도시 모델 (CC0, 공유 재질 — 해제하지 않게 표시)
+          const m = A.Assets3D.clone(pick(A.Assets3D.MODELS.city));
+          m.traverse((o) => { o.userData.shared = true; });
+          const k = rand(80, 140) / 10;
+          m.scale.set(k, k * rand(10, 16) / 10, k);
+          const side = i % 2 === 0 ? -1 : 1;
+          m.position.set(side * (half + 4 + rand(0, 14) + k * 0.7), GROUND_Y, rand(-CITY_SPAN + 20, 20));
+          m.rotation.y = pick([0, Math.PI / 2, Math.PI, -Math.PI / 2]);
+          this.scene3.add(m);
+          this.city.push(m);
+          continue;
+        }
         const w = rand(4, 9);
         const h = rand(14, 42);
         const mat = new THREE.MeshStandardMaterial({
@@ -232,8 +242,18 @@
         this.heroFrames[pose] = canvasTexture(192, 216, (ctx, w, h) => A.drawHero(ctx, this.s.hero, w, h, { back: true, pose }));
       }
       this.cheerUntil = 0; // 이 시각(장면 시간)까지 만세 자세
-      this.hero = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heroFrames.run1, transparent: true }));
-      this.hero.scale.set(1.45, 1.63, 1);
+      if (A.Hero3D && A.Assets3D.heroReady()) {
+        // this.hero 는 위치 기준(가운데 높이 HERO_Y)인 빈 묶음, 안에 3D 히어로를 발이 바닥에 닿게 넣는다
+        this.hero3d = new A.Hero3D(this.s.hero);
+        this.hero = new THREE.Group();
+        this.hero3d.root.scale.setScalar(HERO_3D_H / 2.7);
+        this.hero3d.root.position.y = -HERO_Y + 0.05;
+        this.hero3d.root.rotation.y = Math.PI; // 등이 카메라 쪽
+        this.hero.add(this.hero3d.root);
+      } else {
+        this.hero = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heroFrames.run1, transparent: true }));
+        this.hero.scale.set(1.45, 1.63, 1);
+      }
       this.heroTargetX = this.laneX(startLane);
       this.hero.position.set(this.heroTargetX, HERO_Y, 0);
       this.scene3.add(this.hero);
@@ -429,25 +449,16 @@
           s.tweens.add({ targets: this.hero.position, y: HERO_Y, duration: RESCUE_MS, ease: 'Back.Out', onComplete: onDone });
         },
       });
-      s.tweens.add({ targets: this.hero.material, rotation: 1.4, duration: FALL_MS, yoyo: true, hold: 0 });
+      // 떨어지며 기울어진다 (3D 히어로는 묶음을, 그림 히어로는 스프라이트 재질을 돌린다)
+      const tilt = this.hero3d ? this.hero.rotation : this.hero.material;
+      s.tweens.add({ targets: tilt, [this.hero3d ? 'z' : 'rotation']: 1.4, duration: FALL_MS, yoyo: true, hold: 0 });
     }
 
     // ---------- 매 프레임 ----------
 
     /** Phaser 캔버스와 같은 위치 · 크기로 3D 캔버스를 맞춘다 (창 크기 변경 대응). */
     syncSize() {
-      const pc = this.phaserCanvas;
-      const w = pc.offsetWidth;
-      const h = pc.offsetHeight;
-      if (!w || !h) return;
-      if (w !== this.w || h !== this.h) {
-        this.renderer.setSize(w, h, true);
-        this.w = w;
-        this.h = h;
-      }
-      const st = this.renderer.domElement.style;
-      st.left = `${pc.offsetLeft}px`;
-      st.top = `${pc.offsetTop}px`;
+      this.underlay.sync();
     }
 
     update(time, delta, st) {
@@ -461,7 +472,7 @@
       this.shadow.position.x = this.hero.position.x;
       this.shadow.visible = this.hero.position.y > 0;
 
-      this.setHeroFrame(time, st);
+      this.setHeroFrame(time, st, dt);
       if (!st.busy) {
         this.hero.position.y = HERO_Y + Math.abs(Math.sin(time / 90)) * 0.12; // 달리는 들썩임
         const move = RUN_SPEED * st.speed * dt;
@@ -520,10 +531,15 @@
     }
 
     /** 지금 보여 줄 히어로 자세: 떨어지는 중 = 아야, 문 통과 직후 = 만세, 그 밖에는 달리기 (팔다리 번갈아) */
-    setHeroFrame(time, st) {
+    setHeroFrame(time, st, dt = 0) {
       let pose = Math.floor(time / HERO_RUN_FRAME_MS) % 2 ? 'run1' : 'run2';
       if (st.busy) pose = 'hurt';
       else if (this.s.time.now < this.cheerUntil) pose = 'win';
+      if (this.hero3d) { // 3D: 자세 이름을 3D 동작으로 (달리기 = sprint 반복)
+        this.hero3d.setPose(pose === 'run2' ? 'run1' : pose);
+        this.hero3d.update(dt);
+        return;
+      }
       const map = this.heroFrames[pose];
       if (this.hero.material.map === map) return;
       this.hero.material.map = map;
@@ -534,12 +550,11 @@
     destroy() {
       if (this.destroyed) return;
       this.destroyed = true;
-      disposeTree(this.scene3);
+      if (this.hero3d) this.hero3d.dispose();
+      A.disposeTree3D(this.scene3); // 공유 모델(Kenney 건물)은 남기고 해제
       Object.values(this.heroFrames || {}).forEach((t) => t.dispose()); // 지금 안 쓰는 자세 텍스처도 해제
       if (this.shardGeo) this.shardGeo.dispose();
-      this.renderer.dispose();
-      this.renderer.forceContextLoss();
-      this.renderer.domElement.remove();
+      this.underlay.dispose();
     }
   }
 

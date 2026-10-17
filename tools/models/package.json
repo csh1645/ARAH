@@ -1,0 +1,12 @@
+{
+  "name": "arah-model-tools",
+  "private": true,
+  "type": "module",
+  "description": "3D 히어로 모델 변환 도구 전용 의존성 (게임 배포 빌드에는 포함되지 않는다)",
+  "dependencies": {
+    "@gltf-transform/core": "4.1.1",
+    "@gltf-transform/extensions": "4.1.1",
+    "@gltf-transform/functions": "4.1.1",
+    "meshoptimizer": "0.22.0"
+  }
+}

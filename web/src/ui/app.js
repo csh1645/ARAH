@@ -1,10 +1,12 @@
 /**
- * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(팀 스타 · 히어로 합류 · 마지막 선택) 관리.
- *       저장 키: stars(합계), teamStars(팀별), unlocked(예전 규칙으로 열린 히어로), hero, mode, subject, level, review,
+ * @file 화면 흐름(메뉴 → 게임 → 결과)과 진행 데이터(스타 · 히어로 합류 · 마지막 선택) 관리.
+ *       저장 키: stars(합계 = 합류 조건), unlocked(합류한 히어로 — 목록 순서가 바뀌어도 유지), hero, mode, subject, level, review,
+ *       teamStars(예전 팀별 스타, 이제 쓰지 않음),
  *       runIntroduced(새 놀이 히어로 러너를 한 번 먼저 골라 뒀는지), levelScheme(저장된 단계 값의 체계: 2 = 1~12단계)
  * @layer ui
  * @depends A.storage, A.speak, A.MODES, A.SUBJECTS, A.LEVELS, A.RULES, A.HEROES, A.findHero, A.drawHero,
- *          A.findFamily, A.heroLine, A.Sfx, A.GAME_MODES, A.startGame
+ *          A.findFamily, A.heroLine, A.Sfx, A.voicePacks, A.getVoice, A.setVoice, A.GAME_MODES, A.startGame,
+ *          A.HeroShowcase · A.heroPortrait · A.Assets3D (로비 3D, 없으면 2D 그림)
  * @see doc/planning/game-design.md (6. 점수와 보상, 8. 화면 구성)
  *
  * 보안 규칙: 데이터에서 온 문자열은 항상 textContent 로 넣는다. innerHTML 에는 고정 마크업만 쓴다.
@@ -20,7 +22,7 @@
   /** 메뉴 선택 상태. 게임 시작 시 저장해서 다음 실행 때 그대로 복원한다. */
   const state = {
     stars: store.get('stars', 0),
-    heroId: store.get('hero', 'red'),
+    heroId: store.get('hero', 'spider-man'),
     mode: store.get('mode', 'run'),
     subject: store.get('subject', 'add'),
     level: store.get('level', 1),
@@ -42,9 +44,11 @@
     store.set('runIntroduced', true);
   }
   let game = null;
+  /** @type {A.HeroShowcase|null} 로비의 3D 히어로 무대 (WebGL 이 안 되면 null) */
+  let showcase = null;
 
-  // ---------- 팀 스타 · 히어로 합류 ----------
-  // stars: 지금까지 받은 스타 합계 (기록용) / teamStars: 팀별 스타 (합류 조건) / unlocked: 예전 규칙으로 이미 열린 히어로
+  // ---------- 스타 · 히어로 합류 ----------
+  // stars: 지금까지 받은 스타 합계 (합류 조건) / unlocked: 한 번 합류한 히어로 (조건이 바뀌어도 다시 잠기지 않게 기억)
 
   /**
    * 예전(전체 별 하나로 합류하던 시절, 2026-10-10 배포본)의 합류 조건.
@@ -58,19 +62,39 @@
     'panther-night': 150, 'panther-gold': 280,
   };
 
-  state.teamStars = store.get('teamStars', null);
-  state.unlocked = store.get('unlocked', []);
-  if (!state.teamStars || typeof state.teamStars !== 'object') {
-    // 처음 한 번: 예전 별은 모두 거미 팀으로 플레이해서 모은 것이므로 거미 스타로 옮기고, 이미 열린 히어로는 기억해 둔다
-    state.teamStars = { spider: state.stars };
-    state.unlocked = Object.keys(LEGACY_UNLOCKS).filter((id) => state.stars >= LEGACY_UNLOCKS[id]);
-    store.set('teamStars', state.teamStars);
+  state.unlocked = store.get('unlocked', null);
+  if (!Array.isArray(state.unlocked)) {
+    // 처음 한 번 (2026-10-10 배포본 = 전체 별 하나로 합류하던 시절): 이미 열렸던 히어로를 기억해 둔다
+    state.unlocked = Object.keys(LEGACY_UNLOCKS).filter((id) => state.stars >= LEGACY_UNLOCKS[id]).map((id) => A.HERO_ID_MAP[id] || id);
     store.set('unlocked', state.unlocked);
   }
-  if (!Array.isArray(state.unlocked)) state.unlocked = [];
+  // 히어로가 영화 원조 히어로로 바뀌었다 (같은 자리 · 같은 능력): 저장된 예전 id 를 새 id 로 한 번만 옮긴다
+  const toNewId = (id) => A.HERO_ID_MAP[id] || id;
+  if (state.unlocked.some((id) => A.HERO_ID_MAP[id]) || A.HERO_ID_MAP[state.heroId]) {
+    state.unlocked = state.unlocked.map(toNewId);
+    state.heroId = toNewId(state.heroId);
+    store.set('unlocked', state.unlocked);
+    store.set('hero', state.heroId);
+  }
 
-  const teamStarsOf = (familyId) => Math.max(0, Number(state.teamStars[familyId]) || 0);
-  const isUnlocked = (hero) => teamStarsOf(hero.family) >= hero.unlockStars || state.unlocked.includes(hero.id);
+  /**
+   * 테스트 단계: 모든 히어로를 고를 수 있다 (로컬 개발 서버, 또는 주소에 ?allHeroes).
+   * 고르기만 열어 주고 진행 기록(합류 수 · 다음 합류 · 저장된 unlocked)은 실제 스타 기준 그대로다.
+   */
+  const TEST_ALL_HEROES = !!(import.meta.env && import.meta.env.DEV) || new URLSearchParams(location.search).has('allHeroes');
+  /** 스타로 실제 합류했는지 (진행 기록용) */
+  const earnedUnlock = (hero) => state.stars >= hero.unlockStars || state.unlocked.includes(hero.id);
+  /** 고를 수 있는지 (테스트 단계면 모두) */
+  const isUnlocked = (hero) => TEST_ALL_HEROES || earnedUnlock(hero);
+  /** 합류한 히어로를 기억한다 (나중에 목록 순서 · 조건이 바뀌어도 다시 잠기지 않게) */
+  function rememberUnlocked() {
+    const ids = A.HEROES.filter(earnedUnlock).map((h) => h.id);
+    if (ids.some((id) => !state.unlocked.includes(id))) {
+      state.unlocked = Array.from(new Set([...state.unlocked, ...ids]));
+      store.set('unlocked', state.unlocked);
+    }
+  }
+  rememberUnlocked();
 
   // ---------- 모바일 대응 ----------
   // 게임 화면은 가로형(960 x 640)이라 폰을 세로로 들면 너무 작아진다.
@@ -135,14 +159,33 @@
     return cv;
   }
 
+  /**
+   * 히어로 그림: 3D 초상화(만화풍 블록 히어로)가 준비됐으면 그 이미지, 아니면 2D 그림(hero-art.js).
+   * @param {Hero} hero
+   * @param {number} w
+   * @param {number} h
+   * @returns {HTMLElement}
+   */
+  function heroPicture(hero, w, h) {
+    const url = A.heroPortrait && A.heroPortrait(hero);
+    if (!url) return heroCanvas(hero, w, h);
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.width = w;
+    img.height = h;
+    return img;
+  }
+
+  /** 선택 칩 (과목 · 단계) — 디자인 표준 cx-chip */
   function optionButton(label, sub, selected, onClick) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'option' + (selected ? ' selected' : '');
+    b.className = 'cx-chip' + (selected ? ' selected' : '');
     b.setAttribute('aria-pressed', String(selected));
-    b.innerHTML = `<span class="option-label"></span>${sub ? '<span class="option-sub"></span>' : ''}`;
+    b.innerHTML = `<span class="option-label"></span>${sub ? '<span class="cx-chip-sub"></span>' : ''}`;
     b.querySelector('.option-label').textContent = label;
-    if (sub) b.querySelector('.option-sub').textContent = sub;
+    if (sub) b.querySelector('.cx-chip-sub').textContent = sub;
     b.addEventListener('click', onClick);
     return b;
   }
@@ -153,70 +196,94 @@
     return code >= 0 && code <= 11171 && code % 28 !== 0 ? '이' : '가';
   }
 
-  /** 팀에서 아직 합류하지 않은 히어로 중 가장 먼저 열릴 히어로 (없으면 null) */
-  function nextHeroOf(family) {
-    return A.HEROES.filter((h) => h.family === family.id && !isUnlocked(h)).sort((a, b) => a.unlockStars - b.unlockStars)[0] || null;
+  /** 아직 합류하지 않은 히어로 중 목록에서 가장 앞 (다음 합류 히어로, 없으면 null) */
+  function nextHero() {
+    return A.HEROES.find((h) => !earnedUnlock(h)) || null;
   }
 
   function renderMenu() {
-    if (!isUnlocked(A.findHero(state.heroId))) state.heroId = 'red';
+    if (!isUnlocked(A.findHero(state.heroId))) state.heroId = 'spider-man';
     $('#starCount').textContent = state.stars;
 
-    // 히어로 도감: 팀별로 묶고, 팀 안에서는 합류 조건 순서로 보여 준다
-    const owned = A.HEROES.filter(isUnlocked).length;
+    const owned = A.HEROES.filter(earnedUnlock).length;
     $('#heroCount').textContent = `${owned} / ${A.HEROES.length}`;
-    // 지금 고른 히어로의 팀에서 다음에 합류할 히어로 (이 팀으로 플레이하면 이 팀 스타가 쌓인다)
-    const curFamily = A.findFamily(A.findHero(state.heroId));
-    const nextInTeam = nextHeroOf(curFamily);
-    $('#nextHero').textContent = nextInTeam
-      ? `${curFamily.star} ${curFamily.starName} ${teamStarsOf(curFamily.id)}개 · 다음 합류: ${nextInTeam.name}까지 ${nextInTeam.unlockStars - teamStarsOf(curFamily.id)}개 더`
-      : `${curFamily.star} ${curFamily.name} 히어로를 모두 모았어요! 🎉 다른 팀으로도 플레이해 봐요`;
+    const next = nextHero();
+    $('#nextHero').textContent = next
+      ? `⭐ 다음 합류: ${next.name}까지 ${next.unlockStars - state.stars}개 더`
+      : '⭐ 히어로를 모두 모았어요! 🎉';
+
+    renderStage(A.findHero(state.heroId));
 
     const heroes = $('#heroes');
     heroes.replaceChildren();
-    for (const family of A.HERO_FAMILIES) {
-      const members = A.HEROES.filter((h) => A.findFamily(h).id === family.id).sort((a, b) => a.unlockStars - b.unlockStars);
-      if (!members.length) continue;
-      const head = document.createElement('div');
-      head.className = 'family-head';
-      head.innerHTML = '<strong></strong><span class="family-star"></span><span class="family-trait"></span><span class="family-count"></span>';
-      head.querySelector('strong').textContent = family.name;
-      head.querySelector('.family-star').textContent = `${family.star} ${teamStarsOf(family.id)}`;
-      head.querySelector('.family-trait').textContent = `${family.trait} · ${family.shot}`;
-      head.querySelector('.family-count').textContent = `${members.filter(isUnlocked).length} / ${members.length}`;
-      const grid = document.createElement('div');
-      grid.className = 'hero-grid';
-      for (const hero of members) grid.appendChild(heroCard(hero));
-      heroes.append(head, grid);
-    }
+    // 히어로 도감: 합류 순서대로 한 줄로 (합류한 히어로 → 다음 합류 → 아직 잠긴 히어로)
+    const grid = document.createElement('div');
+    grid.className = 'hero-grid';
+    for (const hero of A.HEROES) grid.appendChild(heroCard(hero, hero === next));
+    heroes.append(grid);
 
     renderOptions();
   }
 
-  /** 히어로 카드 하나 (잠긴 히어로는 흐리게 + 합류 조건 표시) */
-  function heroCard(hero) {
+  /** 로비 위쪽 "히어로 무대": 3D 히어로 + 이름 · 출신 · 능력 말풍선 */
+  function renderStage(hero) {
+    const fam = A.findFamily(hero);
+    $('#stageTeam').textContent = `${fam.star} ${fam.name} 능력`;
+    $('#stageName').textContent = hero.name;
+    $('#stageUniverse').textContent = hero.universe;
+    $('#stageAbility').textContent = hero.abilityText;
+    if (showcase) showcase.setHero(hero);
+    else $('#showcase').replaceChildren(heroCanvas(hero, 180, 202, 'win')); // 2D 그림 무대
+  }
+
+  /**
+   * 히어로 카드 하나 (3D 초상화 + 이름). 잠긴 히어로는 "???" + 필요한 스타, 다음 합류 히어로는 이름을 미리 보여 준다.
+   * @param {Hero} hero
+   * @param {boolean} isNext 다음 합류 히어로인지
+   */
+  function heroCard(hero, isNext) {
     const unlocked = isUnlocked(hero);
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'hero-card' + (hero.id === state.heroId ? ' selected' : '') + (unlocked ? '' : ' locked');
+    card.className = 'cx-card' + (hero.id === state.heroId ? ' selected' : '') + (unlocked ? '' : ' locked') + (isNext ? ' is-next' : '');
     card.disabled = !unlocked;
     card.setAttribute('aria-pressed', String(hero.id === state.heroId));
-    card.appendChild(heroCanvas(hero, 72, 81));
-    const info = document.createElement('div');
-    info.className = 'hero-info';
-    info.innerHTML = '<strong></strong><span class="hero-universe"></span><span class="hero-ability"></span>';
-    info.querySelector('strong').textContent = hero.name;
-    info.querySelector('.hero-universe').textContent = hero.universe;
     const fam = A.findFamily(hero);
-    info.querySelector('.hero-ability').textContent = unlocked
-      ? hero.abilityText
-      : `🔒 ${fam.star} ${fam.starName} ${hero.unlockStars}개 모으면 합류 (지금 ${teamStarsOf(fam.id)}개)`;
-    card.appendChild(info);
+    card.title = unlocked ? `${hero.name} — ${fam.star} ${fam.name} · ${hero.abilityText}` : `⭐ ${hero.unlockStars}개 모으면 합류 (지금 ${state.stars}개)`;
+    card.appendChild(heroPicture(hero, 80, 90));
+    const name = document.createElement('span');
+    name.className = 'card-name';
+    name.textContent = unlocked || isNext ? hero.name : '???';
+    card.appendChild(name);
+    if (!unlocked) {
+      const lock = document.createElement('span');
+      lock.className = 'card-lock';
+      lock.textContent = `🔒 ⭐ ${hero.unlockStars}`;
+      card.appendChild(lock);
+    }
     card.addEventListener('click', () => {
       state.heroId = hero.id;
       renderMenu();
     });
     return card;
+  }
+
+  /** 놀이 타일 (큰 아이콘 + 이름 + 짧은 설명) — 디자인 표준 cx-tile */
+  function modeTile(m) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const selected = m.id === state.mode;
+    b.className = 'cx-tile' + (selected ? ' selected' : '') + (m.isNew ? ' is-new' : '');
+    b.setAttribute('aria-pressed', String(selected));
+    b.innerHTML = '<span class="tile-icon"></span><span class="tile-name"></span><span class="tile-desc"></span>';
+    b.querySelector('.tile-icon').textContent = m.icon;
+    b.querySelector('.tile-name').textContent = m.label;
+    b.querySelector('.tile-desc').textContent = m.desc.replace(/^NEW · /, '').split(' · ').pop();
+    b.addEventListener('click', () => {
+      state.mode = m.id;
+      renderMenu();
+    });
+    return b;
   }
 
   /** 놀이 방법 · 과목 · 단계 선택 버튼 */
@@ -226,13 +293,7 @@
     const available = typeof Phaser === 'undefined' ? A.MODES : A.MODES.filter((m) => A.GAME_MODES[m.id]);
     if (!available.some((m) => m.id === state.mode)) state.mode = available[0].id;
     const modes = $('#modes');
-    modes.replaceChildren(
-      ...available.map((m) =>
-        optionButton(`${m.icon} ${m.label}`, m.desc, m.id === state.mode, () => {
-          state.mode = m.id;
-          renderMenu();
-        })),
-    );
+    modes.replaceChildren(...available.map((m) => modeTile(m)));
 
     // 오답 복습: 지금 고른 놀이에서 쓸 수 있는 복습 문제 수를 보여 주고, 없으면 고를 수 없게 한다
     const reviewKind = state.mode === 'spell' ? 'spell' : 'choice';
@@ -312,20 +373,18 @@
   /**
    * 결과 화면을 보여 주고 스타를 적립한다. A.startGame 의 onEnd 콜백으로 불린다.
    * 스타는 "한 번에 맞힌 문제" 기준이라, 찍어서 맞히는 것보다 차분히 푸는 쪽이 유리하다.
-   * 받은 스타는 이번 판에 고른 히어로의 팀 스타로 쌓이고, 그 팀의 다음 히어로가 합류할 수 있다.
+   * 받은 스타는 한 곳에 쌓이고, 조건을 넘으면 목록의 다음 히어로가 합류한다 (한 판에 한 명).
    * @param {RoundResult} r
    */
   function showResult(r) {
     stopGame();
-    const family = A.findFamily(A.findHero(state.heroId));
-    const wasUnlocked = new Set(A.HEROES.filter(isUnlocked).map((h) => h.id));
+    const wasUnlocked = new Set(A.HEROES.filter(earnedUnlock).map((h) => h.id));
     const earned = r.firstTry + (r.perfect ? A.RULES.perfectBonusStars : 0);
     state.stars += earned;
-    state.teamStars[family.id] = teamStarsOf(family.id) + earned;
     store.set('stars', state.stars);
-    store.set('teamStars', state.teamStars);
-    const newHeroes = A.HEROES.filter((h) => isUnlocked(h) && !wasUnlocked.has(h.id));
-    const next = nextHeroOf(family);
+    const newHeroes = A.HEROES.filter((h) => earnedUnlock(h) && !wasUnlocked.has(h.id));
+    rememberUnlocked();
+    const next = nextHero();
 
     $('#resultTitle').textContent =
       r.heartsLeft <= 0 ? '💪 아쉬워요! 다시 도전!' : r.perfect ? '🏆 퍼펙트 미션!' : '🎉 미션 완료!';
@@ -334,9 +393,9 @@
       ['점수', `${r.score}점`],
       ['한 번에 맞힌 문제', `${r.firstTry} / ${r.total}`],
       ['최고 콤보', `${r.bestCombo}`],
-      [`받은 ${family.starName}`, `${family.star} +${earned}${r.perfect ? ' (퍼펙트 보너스)' : ''}`],
-      [`모은 ${family.starName}`, `${family.star} ${teamStarsOf(family.id)}`],
-      ['다음 합류', next ? `${next.name}까지 ${family.star} ${next.unlockStars - teamStarsOf(family.id)}개` : `${family.name} 완성! 🎉`],
+      ['받은 스타', `⭐ +${earned}${r.perfect ? ' (퍼펙트 보너스)' : ''}`],
+      ['모은 스타', `⭐ ${state.stars}`],
+      ['다음 합류', next ? `${next.name}까지 ⭐ ${next.unlockStars - state.stars}개` : '히어로 모두 모음! 🎉'],
     ];
     // 이번 판에 틀린 문제는 모두 복습 노트에 저장된다 (이미 있던 문제는 다시 처음 상자로)
     if (r.mistakes.length) stats.push(['📒 복습 노트에 저장', `${r.mistakes.length}문제`]);
@@ -355,7 +414,7 @@
     for (const hero of newHeroes) {
       const box = document.createElement('div');
       box.className = 'unlock-hero';
-      box.appendChild(heroCanvas(hero, 64, 72));
+      box.appendChild(heroPicture(hero, 64, 72));
       const p = document.createElement('p');
       p.textContent = `🆕 ${hero.universe}에서 ${hero.name}${josaIGa(hero.name)} 합류했어요!`;
       box.appendChild(p);
@@ -413,10 +472,10 @@
       return;
     }
     const family = A.findFamily(hero);
-    $('#joinTitle').textContent = `${family.star} ${family.name}에 새 히어로 합류!`;
+    $('#joinTitle').textContent = `${family.star} 새 히어로 합류!`;
     $('#joinStar').textContent = family.star;
     const front = $('#joinFront');
-    front.replaceChildren(heroCanvas(hero, 150, 168, 'win'));
+    front.replaceChildren(heroPicture(hero, 150, 168));
     for (const [cls, text] of [['join-name', hero.name], ['join-universe', hero.universe], ['join-ability', hero.abilityText]]) {
       const el = document.createElement('p');
       el.className = cls;
@@ -477,7 +536,32 @@
     $('#sfxToggle').setAttribute('aria-pressed', String(sfx));
     $('#bgmToggle').textContent = bgm ? '🎵 배경음 켜짐' : '🎵 배경음 꺼짐';
     $('#bgmToggle').setAttribute('aria-pressed', String(bgm));
+    renderVoiceButton();
     $('#muteBtn').textContent = sfx || bgm ? '🔊' : '🔇';
+  }
+
+  // ---------- 영어 목소리 팩 ----------
+  // 목소리마다 원어민 발음 파일 묶음이 따로 있다 (core/speech.js, tools/audio/generate.mjs VOICES 표).
+  // 누를 때마다 다음 목소리로 바꾸고, 바로 들어 보도록 짧은 문장을 읽어 준다.
+
+  const VOICE_SAMPLE = 'I am happy.';
+
+  function renderVoiceButton() {
+    const packs = A.voicePacks();
+    const btn = $('#voiceToggle');
+    btn.hidden = packs.length < 2; // 팩이 하나뿐이면 고를 것이 없다
+    const cur = packs.find((p) => p.id === A.getVoice());
+    btn.textContent = `🗣️ ${cur ? cur.label : '목소리'}`;
+  }
+
+  function nextVoice() {
+    const packs = A.voicePacks();
+    if (!packs.length) return;
+    const i = packs.findIndex((p) => p.id === A.getVoice());
+    A.setVoice(packs[(i + 1) % packs.length].id);
+    A.unlockAudio();
+    renderVoiceButton();
+    A.speak(VOICE_SAMPLE);
   }
 
   function backToMenu() {
@@ -495,6 +579,15 @@
     // 소리 켜기 · 끄기: 메뉴는 효과음 · 배경음 따로, 게임 중 버튼은 둘 다 한 번에
     $('#sfxToggle').addEventListener('click', () => toggleSound('sfx'));
     $('#bgmToggle').addEventListener('click', () => toggleSound('bgm'));
+    $('#voiceToggle').addEventListener('click', nextVoice);
+    if (A.Assets3D && A.Assets3D.supported() && A.Assets3D.USE_HERO_3D) {
+      showcase = new A.HeroShowcase($('#showcase'));
+      // 메뉴를 보는 동안 3D 모델을 미리 불러 두고, 다 불러오면 3D 무대 · 초상화로 다시 그린다
+      A.Assets3D.preloadAll().then(() => renderMenu());
+    } else {
+      // 히어로는 2D 그림 (USE_HERO_3D = false 또는 3D 가 안 되는 기기). 3D 배경 모델은 메뉴를 보는 동안 미리 불러 둔다
+      if (A.Assets3D && A.Assets3D.supported()) A.Assets3D.preloadAll();
+    }
     $('#muteBtn').addEventListener('click', () => {
       const on = !(A.Sfx.isEnabled('sfx') || A.Sfx.isEnabled('bgm'));
       A.Sfx.setEnabled('sfx', on);

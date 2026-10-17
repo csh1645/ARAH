@@ -3,7 +3,8 @@
  *       하트 · 점수 · 콤보 · 문제 진행 · HUD · 결과 전달을 담당하고,
  *       모드별 화면과 조작은 하위 클래스(game/modes/*)가 구현한다.
  * @layer game
- * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily, A.heroLine, A.SPRITES
+ * @depends Phaser 3, A.util, A.RULES, A.makeQuestion, A.Review, A.speak, A.Sfx, A.drawHero, A.heroHand, A.HERO_POSES, A.findFamily, A.heroLine, A.SPRITES,
+ *          A.Stage3D (3D 무대 — 실행 시점에 읽음)
  * @see doc/planning/game-design.md (3. 핵심 루프, 6. 점수와 보상)
  *
  * 하위 클래스가 구현할 훅(hook):
@@ -106,6 +107,19 @@
 
   class RoundScene extends Phaser.Scene {
     /**
+     * 3D 무대(Stage3D)를 쓰면 Phaser 캔버스를 투명하게 해 3D 세상 위에 글자 UI 만 겹친다 (launcher 가 읽는다).
+     * WebGL 이 없으면 false → 예전 2D 화면.
+     */
+    static get transparent() {
+      return this.useStage3D && !!A.Stage3D && A.Stage3D.supported();
+    }
+
+    /** 공통 3D 무대를 쓰는지. 자기만의 3D 화면이 있는 모드(문 통과)는 false 로 바꾼다 */
+    static get useStage3D() {
+      return true;
+    }
+
+    /**
      * A.startGame 이 넘겨준 데이터를 받는다.
      * @param {{opts: {hero: Hero, subject: string, level: 1|2|3, mode: string}, onEnd: (r: RoundResult) => void}} data
      */
@@ -153,6 +167,8 @@
         emitting: false,
       }).setDepth(DEPTH.popup);
 
+      // 3D 무대: 하늘 · 도시 · 3D 히어로 · 소품 (모드의 createWorld 가 drawBackdrop · follow 로 채운다)
+      this.stage3d = this.constructor.transparent && this.constructor.useStage3D ? new A.Stage3D(this) : null;
       this.createWorld();
       // 배경음: 판이 시작될 때 켜고, 장면이 끝나면(그만하기 · 결과) 끈다
       A.Sfx.music.start(this.musicName());
@@ -371,6 +387,7 @@
 
     /** 히어로 잔상 하나를 남긴다. 스윙 · 대시처럼 빠르게 움직일 때 몇 프레임마다 부른다. */
     ghostTrail() {
+      if (this.stage3d) return; // 3D 히어로는 잔상 대신 동작 애니메이션으로 속도감을 낸다
       const p = this.player;
       const ghost = this.add
         .image(p.x, p.y, p.texture.key, p.frame.name) // 지금 자세 그대로 (아틀라스면 프레임까지)
@@ -510,6 +527,28 @@
     // ---------- 공통 화면 요소 ----------
 
     /**
+     * 배경(하늘 · 도시 · 바닥). 3D 무대가 있으면 3D 로(바닥 높이만 넘김), 없으면 예전 2D 그림으로 그린다.
+     * 모드는 배경을 직접 그리지 않고 이 함수 하나만 부른다.
+     * @param {{city: {baseY: number, color: number, range: [number, number]}, ground?: {y: number, h?: number, color?: number}}} o
+     *        city: 2D 도시 실루엣 / ground: 히어로가 서는 바닥 (게임 화면 y, 높이, 색) — 없으면 바닥 없음
+     * @returns {Phaser.GameObjects.Graphics|null} 2D 일 때 배경 그래픽 (모드가 더 그릴 수 있게), 3D 면 null
+     */
+    drawBackdrop(o) {
+      if (this.stage3d) {
+        this.stage3d.setGround(o.ground ? o.ground.y : null);
+        return null;
+      }
+      this.drawSky();
+      const g = this.add.graphics().setDepth(DEPTH.bg);
+      this.drawCity(g, o.city.baseY, o.city.color, o.city.range);
+      if (o.ground) {
+        g.fillStyle(o.ground.color || 0x2a2e5c, 1);
+        g.fillRect(0, o.ground.y, W, o.ground.h || H - o.ground.y);
+      }
+      return g;
+    }
+
+    /**
      * 살아 움직이는 밤하늘: 그라데이션, 별(일부 반짝임), 달, 구름, 서치라이트, 별똥별.
      * 자체 깊이(SKY_DEPTH, AMBIENT_DEPTH)를 써서 모드가 그리는 도시 · 건물보다 항상 뒤에 놓인다.
      */
@@ -616,6 +655,7 @@
       this.inMelee = false;
       this.player = this.add.image(x, y, ...this.heroFrameOf('idle')).setDepth(DEPTH.hero).setScale(scale);
       this.events.on('update', this.tickHeroAnim, this);
+      if (this.stage3d) this.stage3d.attachHero(this.player); // 2D 그림은 숨기고 3D 히어로가 따라간다
       return this.player;
     }
 

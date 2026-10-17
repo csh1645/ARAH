@@ -2,7 +2,7 @@
  * @file 🏙️ 빌딩 스윙 모드. 옥상 간판에 보기가 적힌 빌딩들 중 정답 빌딩을 골라 건너간다.
  *       건너가는 방법은 히어로 팀마다 다르다 (거미줄 스윙 · 제트 비행 · 거인 점프 · 순간이동 …, game/travels.js).
  * @layer game
- * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.TRAVELS, A.findFamily
+ * @depends A.RoundScene, A.GAME, A.util, A.RULES, A.speak, A.TRAVELS, A.findFamily, A.Props3D (3D 무대일 때)
  * @see doc/planning/game-design.md (3.2 빌딩 스윙)
  *
  * 판정: 정답 빌딩 선택 → 스윙해서 착지, 다음 문제
@@ -58,10 +58,8 @@
       this.line = null;
       this.landed = null;
 
-      this.drawSky();
-      const g = this.add.graphics().setDepth(DEPTH.bg);
-      // 멀리 있는 도시는 어둡게 그려 앞쪽 빌딩과 거리감을 준다
-      this.drawCity(g, H, 0x141838, [220, 360]);
+      // 멀리 있는 도시는 어둡게 그려 앞쪽 빌딩과 거리감을 준다 (바닥 없음: 건물 옥상을 건너다닌다)
+      this.drawBackdrop({ city: { baseY: H, color: 0x141838, range: [220, 360] } });
 
       this.current = this.makeBuilding(START_X, START_ROOF, START_W, null);
       this.createHero(START_X, START_ROOF - HERO_FOOT);
@@ -98,6 +96,10 @@
         }
       }
       c.add(g);
+      if (this.stage3d) { // 3D 고층 빌딩이 같은 자리 · 같은 옥상 높이로 선다 (간판 · 안테나는 2D 그대로)
+        g.setVisible(false);
+        this.stage3d.follow(c, A.Props3D.building(w, H - roofY), { dy: roofY, z: -0.2 });
+      }
       const b = { c, roofY, w, label, isCorrect: false, used: false, signParts: [] };
       if (label === null) return b;
 

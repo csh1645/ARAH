@@ -1,11 +1,12 @@
 /**
  * @file 영어 발음 재생. 기기와 상관없이 같은 원어민 발음을 내기 위해 "발음 파일 우선, 음성 합성 대체" 순서로 동작한다.
  * @layer core
- * @depends A.WORD_AUDIO (data/audio-manifest.js — 실행 시점에 읽으므로 로드 순서와 무관)
+ * @depends A.VOICE_PACKS · A.VOICE_DEFAULT (data/audio-manifest.js — 실행 시점에 읽으므로 로드 순서와 무관), A.storage
  * @see doc/decisions/ADR-0004-pronunciation.md
  *
- * 1순위: web/assets/audio/words/ 의 미국 원어민 발음 파일 (모든 PC · 모바일 · 웹에서 같은 소리)
+ * 1순위: 고른 목소리 팩(assets/audio/voices/<목소리>/)의 미국 원어민 발음 파일 (모든 PC · 모바일 · 웹에서 같은 소리)
  *        단어 · 어구 · 문장 모두 파일이 있다. 목록 키는 소문자 원문 (예: "i am happy.")
+ *        고른 팩에 없는 글은 기본 팩 파일로 읽는다 (새 팩을 만드는 중이어도 소리가 끊기지 않게)
  * 2순위: 기기 음성 합성(Web Speech API) 중 가장 좋은 미국 영어 음성 (파일이 없거나 재생 실패 시)
  *
  * 모바일(특히 iOS)은 사용자가 화면을 누르지 않은 상태에서 소리 재생을 막는다.
@@ -16,7 +17,8 @@
 
   /** 초등 저학년이 따라 듣기 쉽도록 기본 속도(1.0)보다 조금 느리게 읽는다 (음성 합성일 때). */
   const SPEECH_RATE = 0.85;
-  const AUDIO_DIR = 'assets/audio/words/';
+  const VOICES_DIR = 'assets/audio/voices/';
+  const VOICE_KEY = 'voice'; // localStorage 저장 키 (고른 목소리 팩)
   /** 오디오 요소를 여는 데 쓰는 아주 짧은 무음 WAV */
   const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
@@ -106,8 +108,8 @@
    * @param {string} text 읽을 영어 단어 · 어구 · 문장 (목록에서 소문자로 찾는다)
    */
   A.speak = function (text) {
-    const file = A.WORD_AUDIO && A.WORD_AUDIO[String(text).toLowerCase()];
-    if (!file || !player) {
+    const src = fileFor(String(text).toLowerCase());
+    if (!src || !player) {
       speakTts(text);
       return;
     }
@@ -121,7 +123,7 @@
     try {
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       player.onerror = () => fallback();
-      player.src = AUDIO_DIR + file;
+      player.src = src;
       const p = player.play();
       if (p && p.catch) p.catch(fallback);
     } catch (e) {
@@ -129,9 +131,47 @@
     }
   };
 
-  /** 지금 발음 방식 설명 (점검용). 예: "파일 40개 + TTS: Microsoft Aria (en-US)" */
+  // ---------- 목소리 팩 ----------
+
+  /** 지금 고른 목소리 팩 id (저장값이 없거나 사라진 팩이면 기본 팩) */
+  function currentVoice() {
+    const packs = A.VOICE_PACKS || {};
+    const id = A.storage.get(VOICE_KEY, A.VOICE_DEFAULT);
+    return packs[id] ? id : A.VOICE_DEFAULT;
+  }
+
+  /** 글(소문자) → 재생할 파일 경로. 고른 팩 → 기본 팩 순서로 찾고, 없으면 null (음성 합성으로) */
+  function fileFor(key) {
+    const packs = A.VOICE_PACKS || {};
+    for (const id of [currentVoice(), A.VOICE_DEFAULT]) {
+      const f = packs[id] && packs[id].files[key];
+      if (f) return `${VOICES_DIR}${id}/${f}`;
+    }
+    return null;
+  }
+
+  /**
+   * 메뉴에 보여 줄 목소리 팩 목록 (파일이 하나라도 있는 팩만)
+   * @returns {{id: string, label: string}[]}
+   */
+  A.voicePacks = function () {
+    return Object.entries(A.VOICE_PACKS || {})
+      .filter(([, p]) => Object.keys(p.files).length)
+      .map(([id, p]) => ({ id, label: p.label }));
+  };
+
+  /** @returns {string} 지금 고른 목소리 팩 id */
+  A.getVoice = currentVoice;
+
+  /** @param {string} id 고를 목소리 팩 id (다음 실행 때도 유지) */
+  A.setVoice = function (id) {
+    if (A.VOICE_PACKS && A.VOICE_PACKS[id]) A.storage.set(VOICE_KEY, id);
+  };
+
+  /** 지금 발음 방식 설명 (점검용). 예: "af_heart 파일 231개 + TTS: Microsoft Aria (en-US)" */
   A.voiceName = function () {
-    const files = A.WORD_AUDIO ? Object.keys(A.WORD_AUDIO).length : 0;
+    const pack = A.VOICE_PACKS && A.VOICE_PACKS[currentVoice()];
+    const files = pack ? `${currentVoice()} ${Object.keys(pack.files).length}` : 0;
     const tts = chosenVoice ? `${chosenVoice.name} (${chosenVoice.lang})` : '없음';
     return `파일 ${files}개 + TTS: ${tts}`;
   };

@@ -8,41 +8,61 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🦸%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap">
 </head>
 <body>
   <main id="app">
-    <!-- 메뉴 -->
-    <section id="menu" class="screen">
-      <header class="menu-header">
-        <h1>🦸 히어로 대작전</h1>
-        <p class="tagline">8개 팀 히어로를 모으며 <b>정답</b>으로 도시를 지켜라!</p>
-        <p class="stars">모은 스타 ⭐ <span id="starCount">0</span> · 히어로 도감 🦸 <span id="heroCount">0</span></p>
-        <p id="nextHero" class="next-hero"></p>
+    <!-- 메뉴 = 히어로 로비 (디자인 표준: doc/standards/design-system.md, 히어로 코믹스) -->
+    <section id="menu" class="screen lobby">
+      <header class="lobby-top">
+        <h1 class="cx-title">히어로 대작전!</h1>
+        <div class="lobby-stats">
+          <span class="cx-chip cx-chip-stat">⭐ <span id="starCount">0</span></span>
+          <span class="cx-chip cx-chip-stat">🦸 <span id="heroCount">0</span></span>
+        </div>
         <div class="sound-toggles">
-          <button id="sfxToggle" type="button" class="sound-btn"></button>
-          <button id="bgmToggle" type="button" class="sound-btn"></button>
+          <button id="sfxToggle" type="button" class="cx-btn sound-btn"></button>
+          <button id="bgmToggle" type="button" class="cx-btn sound-btn"></button>
+          <button id="voiceToggle" type="button" class="cx-btn sound-btn" aria-label="영어 목소리 바꾸기"></button>
         </div>
       </header>
 
-      <h2>1. 히어로를 골라요</h2>
-      <div id="heroes" class="hero-book"></div>
+      <!-- 히어로 무대: 고른 히어로(3D)와 출동 버튼 -->
+      <section class="lobby-stage cx-panel">
+        <div id="showcase" class="showcase" aria-hidden="true"></div>
+        <div class="stage-info">
+          <p id="stageTeam" class="cx-tag"></p>
+          <h2 id="stageName" class="stage-name"></h2>
+          <p id="stageUniverse" class="stage-universe"></p>
+          <p id="stageAbility" class="cx-bubble"></p>
+          <p id="nextHero" class="next-hero"></p>
+          <button id="startBtn" type="button" class="cx-go">출동!</button>
+        </div>
+      </section>
 
-      <h2>2. 놀이 방법을 골라요</h2>
-      <div id="modes" class="option-row"></div>
+      <section class="cx-panel">
+        <h2 class="cx-label">놀이를 골라요</h2>
+        <div id="modes" class="tile-row"></div>
+      </section>
 
-      <h2>3. 과목을 골라요</h2>
-      <div id="subjects" class="option-row"></div>
+      <div class="lobby-cols">
+        <section class="cx-panel">
+          <h2 class="cx-label">과목</h2>
+          <div id="subjects" class="chip-row"></div>
+        </section>
+        <section class="cx-panel">
+          <h2 class="cx-label">단계</h2>
+          <div id="levels" class="chip-row"></div>
+        </section>
+      </div>
 
-      <h2>4. 단계를 골라요</h2>
-      <div id="levels" class="option-row"></div>
+      <section class="cx-panel">
+        <h2 class="cx-label">히어로 도감</h2>
+        <div id="heroes" class="hero-book"></div>
+      </section>
 
-      <button id="startBtn" type="button" class="primary">🚀 출동!</button>
       <p class="controls">
-        🎯 드론 잡기 — PC: ← → 이동, 스페이스 또는 클릭 · 태블릿: 드론을 터치<br>
-        🏙️ 빌딩 스윙 — PC: 숫자 1~4, 또는 ← → 고르고 스페이스 · 태블릿: 빌딩을 터치<br>
-        🚪 문 통과 — PC: ← → 줄 이동, 스페이스 대시 · 태블릿: 문을 터치(한 번 더 누르면 대시)<br>
-        🕸️ 철자 잇기 — PC: 알파벳 키 또는 클릭 · 태블릿: 알파벳 블록을 순서대로 터치
+        PC: 화살표 · 스페이스 · 숫자 키 / 태블릿: 화면을 터치해요
       </p>
     </section>
 

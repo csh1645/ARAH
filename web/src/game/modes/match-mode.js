@@ -52,9 +52,8 @@
       this.locked = true; // 미리 보기 · 짝 확인 중에는 누를 수 없다
       this.pairsLeft = 0;
 
-      this.drawSky();
-      const g = this.add.graphics().setDepth(DEPTH.bg);
-      this.drawCity(g, 640, 0x1a1f45, [80, 200]);
+      // 2D 는 옥상 없이 도시만, 3D 는 히어로 발밑(560 + 히어로 반 키 × 0.8)에 옥상
+      this.drawBackdrop({ city: { baseY: 640, color: 0x1a1f45, range: [80, 200] }, ground: this.stage3d ? { y: 603 } : null });
       this.createHero(70, 560, 0.8);
       this.webGfx = this.add.graphics().setDepth(DEPTH.web);
       this.links = []; // 짝 맞춘 카드를 잇는 줄 [{a, b}]
