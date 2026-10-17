@@ -50,6 +50,7 @@
  * @property {string} [mascot]  마스코트 종류 (game/hero-art.js mascotHead): 산리오 kitty · melody · kuromi · cinnamo · purin · pochacco · keroppi · badtz · hangyodon,
  *           치이카와 chiikawa · hachiware · usagi, 원피스 chopper
  * @property {string} [hat]       모자: straw · cowboy · topHat · lawHat (원피스)
+ * @property {string} [op]        원피스 캐릭터 id — 캐릭터별 얼굴 윤곽 · 눈매 · 머리카락 (game/hero-art.js OP) / [beads] 에이스 목걸이
  * @property {number} [anime]     애니 치비 얼굴 + 큰 머리 (원피스) / [mouth] grin · smile · smirk / [eye] 눈동자 색
  * @property {string[]} [faceMarks] 얼굴 특징: scar · scars3 · eyeScar · longNose · curlyBrow · sunglasses · freckles · tusks · goatee
  * @property {string} [arms]      팔 색 (맨팔 · 소매) / [legs] 다리 색 — 기본은 무늬(pattern)에 따라
@@ -150,7 +151,7 @@
     h('hulk', 'giant', '헐크', '어벤져스', '줄이 넓게 퍼지고, 생각할 시간이 2초 더', { hitRadius: 26, timeBonus: 2 },
       { style: 'giant', suit: '#4caf50', accent: '#6a1b9a', line: '#1b5e20', emblem: '#1b5e20', pattern: 'skin', mark: 'none', head: 'tint', hair: '#1a1a1a', hairStyle: 'buzzed', bulk: 1.3 }),
     h('luffy', 'giant', '루피', '원피스', '넓은 판정 + 생각할 시간 2초 더', { hitRadius: 26, timeBonus: 2 },
-      { anime: 1, mouth: 'grin', style: 'giant', suit: '#d62828', accent: '#1d4ed8', line: '#f2c94c', emblem: '#f2c94c', pattern: 'vest', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'spiky', hat: 'straw', faceMarks: ['scar'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#c9a227', belt: '#f2c94c' }),
+      { op: 'luffy', anime: 1, mouth: 'grin', style: 'giant', suit: '#d62828', accent: '#1d4ed8', line: '#f2c94c', emblem: '#f2c94c', pattern: 'vest', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'spiky', hat: 'straw', faceMarks: ['scar'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#c9a227', belt: '#f2c94c' }),
     // ---- 9~16번째 합류 ----
     h('hawkeye', 'archer', '호크아이', '어벤져스 · 호크아이', '콤보 점수 1.4배, 줄도 조금 빨라요', { comboBonus: 1.4, webSpeed: 1.3 },
       { style: 'archer', suit: '#3b1f5c', accent: '#1a1a1a', line: '#7b4fb0', emblem: '#ce93d8', pattern: 'tactical', mark: 'none', head: 'face', hair: '#5d4037', hairStyle: 'buzzed', gear: ['bow', 'quiver'] }),
@@ -163,7 +164,7 @@
     h('miles-morales', 'spider', '마일스 모랄레스', '스파이더맨: 뉴 유니버스', '줄이 넓게 퍼지고, 생각할 시간이 2초 더 있어요', { hitRadius: 26, timeBonus: 2 },
       { style: 'classic', suit: '#141419', accent: '#141419', line: '#e63946', emblem: '#e63946', pattern: 'web', mark: 'spiderBig', head: 'mask' }),
     h('zoro', 'panther', '조로', '원피스', '날렵해서 빠르고, 하트도 하나 더', { webSpeed: 1.6, cooldown: 180, hearts: 4 },
-      { anime: 1, mouth: 'smirk', style: 'panther', suit: '#f5f5f5', accent: '#2e7d32', line: '#1a1a1a', emblem: '#2e7d32', pattern: 'plain', mark: 'none', head: 'face', hair: '#3fae49', hairStyle: 'messy', faceMarks: ['eyeScar'], gear: ['swords3'], skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a', belt: '#2e7d32' }),
+      { op: 'zoro', anime: 1, mouth: 'smirk', style: 'panther', suit: '#f5f5f5', accent: '#2e7d32', line: '#1a1a1a', emblem: '#2e7d32', pattern: 'plain', mark: 'none', head: 'face', hair: '#3fae49', hairStyle: 'messy', faceMarks: ['eyeScar'], gear: ['swords3'], skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a', belt: '#2e7d32' }),
     h('hachiware', 'spider', '하치와레', '치이카와', '콤보 점수가 1.4배로 올라가요', { comboBonus: 1.4 },
       { style: 'classic', mascot: 'hachiware', suit: '#ffffff', accent: '#8fa9c4', line: '#5b7393', emblem: '#8fa9c4', body3: '#ffffff', legs: '#ffffff', boot: '#ffffff', hands: '#ffffff' }),
     h('war-machine', 'armor', '워머신', '아이언맨 2 · 어벤져스', '스캐너 + 하트 하나 더', { hint: true, hearts: 4 },
@@ -176,7 +177,7 @@
     h('superman', 'giant', '슈퍼맨', '맨 오브 스틸 · 슈퍼맨', '넓은 판정 + 시간 + 콤보 1.2배', { hitRadius: 26, timeBonus: 2, comboBonus: 1.2 },
       { style: 'giant', suit: '#1d4ed8', accent: '#c62828', line: '#f2c14e', emblem: '#c62828', pattern: 'plain', belt: 1, mark: 'super', head: 'face', hair: '#111111', hairStyle: 'parted', cape: '#c62828', glove: '#1d4ed8', boot: '#c62828', bulk: 1.08 }),
     h('nami', 'thunder', '나미', '원피스', '아주 빠르고, 시간 +1초', { webSpeed: 1.8, cooldown: 150, timeBonus: 1 },
-      { anime: 1, mouth: 'grin', style: 'thunder', body: 'f', suit: '#f5f5f5', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f28c28', pattern: 'stripes', mark: 'none', head: 'face', hair: '#f28c28', hairStyle: 'long', gear: ['spear'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#3b5b92', boot: '#c62828' }),
+      { op: 'nami', anime: 1, mouth: 'grin', style: 'thunder', body: 'f', suit: '#f5f5f5', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f28c28', pattern: 'stripes', mark: 'none', head: 'face', hair: '#f28c28', hairStyle: 'long', gear: ['spear'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#3b5b92', boot: '#c62828' }),
     h('cinnamoroll', 'thunder', '시나모롤', '산리오', '큰 귀로 날아서 아주 빨라요', { webSpeed: 1.7, cooldown: 170 },
       { style: 'classic', mascot: 'cinnamo', suit: '#ffffff', accent: '#8fd3ff', line: '#8fd3ff', emblem: '#8fd3ff', body3: '#ffffff', legs: '#ffffff', boot: '#ffffff', hands: '#ffffff' }),
     h('black-widow', 'archer', '블랙 위도우', '블랙 위도우 · 어벤져스', '콤보 1.5배, 가짜 보기도 알려줘요', { comboBonus: 1.5, hint: true },
@@ -189,7 +190,7 @@
     h('wolverine', 'panther', '울버린', '엑스맨 · 데드풀과 울버린', '빠르고, 하트 +1, 콤보 1.3배', { webSpeed: 1.6, hearts: 4, comboBonus: 1.3 },
       { style: 'panther', suit: '#ffd600', accent: '#1d4ed8', line: '#111111', emblem: '#c62828', pattern: 'sides', belt: 1, mark: 'x', head: 'cowl', fins: 1, gear: ['claws'], glove: '#1d4ed8', boot: '#1d4ed8' }),
     h('usopp', 'archer', '우솝', '원피스', '콤보 1.5배, 가짜 보기도 알려줘요', { comboBonus: 1.5, hint: true },
-      { anime: 1, mouth: 'grin', style: 'archer', suit: '#8d6e63', accent: '#f5f5f5', line: '#5d4037', emblem: '#f2c94c', pattern: 'plain', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'curly', faceMarks: ['longNose'], gear: ['bow'], skin: '#c68642', arms: '#c68642', glove: '#c68642', legs: '#8d6e63', boot: '#5d4037' }),
+      { op: 'usopp', anime: 1, mouth: 'grin', style: 'archer', suit: '#8d6e63', accent: '#f5f5f5', line: '#5d4037', emblem: '#f2c94c', pattern: 'plain', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'curly', faceMarks: ['longNose'], gear: ['bow'], skin: '#c68642', arms: '#c68642', glove: '#c68642', legs: '#8d6e63', boot: '#5d4037' }),
     h('spider-gwen', 'spider', '스파이더 그웬', '스파이더맨: 어크로스 더 유니버스', '줄 · 스윙 · 이동이 아주 빨라요', { webSpeed: 1.7, cooldown: 170 },
       { style: 'hood', suit: '#f5f5f5', accent: '#ff4fa3', line: '#3a3a3a', emblem: '#111111', pattern: 'web', webHeadOnly: 1, mark: 'spider', head: 'mask', hood: 1, body: 'f', glove: '#00bcd4', boot: '#00bcd4' }),
     h('vision', 'armor', '비전', '어벤져스: 에이지 오브 울트론', '스캐너 + 콤보 점수 1.3배', { hint: true, comboBonus: 1.3 },
@@ -201,7 +202,7 @@
     h('captain-marvel', 'thunder', '캡틴 마블', '캡틴 마블', '아주 빠르고, 하트도 하나 더', { webSpeed: 1.8, cooldown: 150, hearts: 4 },
       { style: 'thunder', suit: '#1d4ed8', accent: '#c62828', line: '#f2c14e', emblem: '#f2c14e', pattern: 'sides', mark: 'star', head: 'face', body: 'f', hair: '#e8c66a', hairStyle: 'long', glove: '#1d4ed8', boot: '#c62828' }),
     h('sanji', 'panther', '상디', '원피스', '아주 빠르고, 하트 +1', { webSpeed: 1.8, cooldown: 170, hearts: 4 },
-      { anime: 1, mouth: 'smirk', style: 'panther', suit: '#1a1a1a', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f4d35e', pattern: 'suitTie', mark: 'none', head: 'face', hair: '#f4d35e', hairStyle: 'sideSweep', faceMarks: ['curlyBrow'], skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a' }),
+      { op: 'sanji', anime: 1, mouth: 'smirk', style: 'panther', suit: '#1a1a1a', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f4d35e', pattern: 'suitTie', mark: 'none', head: 'face', hair: '#f4d35e', hairStyle: 'sideSweep', faceMarks: ['curlyBrow'], skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a' }),
     // ---- 33~40번째 합류 ----
     h('groot', 'giant', '그루트', '가디언즈 오브 갤럭시', '넓은 판정 + 시간 + 천천히', { hitRadius: 26, timeBonus: 2, slow: 0.8 },
       { style: 'giant', suit: '#7b5a3c', accent: '#5d4037', line: '#3e2a1a', emblem: '#7cb342', pattern: 'bark', mark: 'none', head: 'tint', bulk: 1.15 }),
@@ -210,7 +211,7 @@
     h('green-lantern', 'mystic', '그린 랜턴', '그린 랜턴', '시간이 더 천천히 (+2초)', { slow: 0.7, timeBonus: 2 },
       { style: 'mystic', suit: '#2e7d32', accent: '#111111', line: '#e8f5e9', emblem: '#76ff03', pattern: 'sides', mark: 'lantern', head: 'domino', hair: '#3e2723', hairStyle: 'parted', glove: '#f5f5f5', gear: ['ring'] }),
     h('law', 'mystic', '로', '원피스', '마법 같은 능력으로 천천히 + 가짜 보기 알림', { slow: 0.75, hint: true },
-      { style: 'mystic', anime: 1, mouth: 'smirk', suit: '#1a1a1a', accent: '#f2c94c', line: '#f2c94c', emblem: '#f2c94c', pattern: 'plain', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'slick', hat: 'lawHat', faceMarks: ['goatee'], skin: '#e0ac69', glove: '#e0ac69', legs: '#c9b98a', boot: '#1a1a1a', gear: ['sword'] }),
+      { op: 'law', style: 'mystic', anime: 1, mouth: 'smirk', suit: '#1a1a1a', accent: '#f2c94c', line: '#f2c94c', emblem: '#f2c94c', pattern: 'plain', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'slick', hat: 'lawHat', faceMarks: ['goatee'], skin: '#e0ac69', glove: '#e0ac69', legs: '#c9b98a', boot: '#1a1a1a', gear: ['sword'] }),
     h('pochacco', 'spider', '포차코', '산리오', '콤보 점수가 1.4배로 올라가요', { comboBonus: 1.4 },
       { style: 'classic', mascot: 'pochacco', suit: '#ffffff', accent: '#1a1a1a', line: '#1a1a1a', emblem: '#d62828', body3: '#ffffff', shirt: '#d62828', boot: '#ffffff', hands: '#ffffff' }),
     h('catwoman', 'panther', '캣우먼', '더 배트맨', '빠르고, 하트 +1, 시간 +1초', { webSpeed: 1.5, hearts: 4, timeBonus: 1 },
@@ -231,7 +232,7 @@
     h('keroppi', 'archer', '케로피', '산리오', '콤보 1.5배, 점프도 빨라요', { comboBonus: 1.5, webSpeed: 1.3 },
       { style: 'classic', mascot: 'keroppi', suit: '#4caf50', accent: '#e91e63', line: '#2e7d32', emblem: '#e91e63', body3: '#4caf50', legs: '#4caf50', boot: '#4caf50', hands: '#4caf50' }),
     h('robin', 'mystic', '로빈', '원피스', '시간이 더 천천히 (+2초)', { slow: 0.7, timeBonus: 2 },
-      { anime: 1, mouth: 'smile', style: 'mystic', body: 'f', suit: '#5b2c83', accent: '#1a1a1a', line: '#b39ddb', emblem: '#b39ddb', pattern: 'plain', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'long', skin: '#e8b98a', glove: '#e8b98a', legs: '#1a1a1a', boot: '#1a1a1a' }),
+      { op: 'robin', anime: 1, mouth: 'smile', style: 'mystic', body: 'f', suit: '#5b2c83', accent: '#1a1a1a', line: '#b39ddb', emblem: '#b39ddb', pattern: 'plain', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'long', skin: '#e8b98a', glove: '#e8b98a', legs: '#1a1a1a', boot: '#1a1a1a' }),
     h('the-thing', 'giant', '씽', '판타스틱 4: 새로운 출발', '넓은 판정 + 시간 + 하트 +1', { hitRadius: 26, timeBonus: 2, hearts: 4 },
       { style: 'giant', suit: '#d9822b', accent: '#1d4ed8', line: '#6b3a0e', emblem: '#ffffff', pattern: 'rock', mark: 'none', head: 'tint', bulk: 1.3 }),
     h('ant-man', 'archer', '앤트맨', '앤트맨', '콤보 1.6배, 하트 +1', { comboBonus: 1.6, hearts: 4 },
@@ -244,7 +245,7 @@
     h('spider-woman', 'spider', '스파이더 우먼', '스파이더맨: 어크로스 더 유니버스', '하트를 하나 더 가지고 시작해요', { hearts: 4 },
       { style: 'classic', suit: '#c1121f', accent: '#f2c14e', line: '#7a0c12', emblem: '#f2c14e', pattern: 'plain', mark: 'spiderBig', head: 'mask', body: 'f' }),
     h('franky', 'armor', '프랑키', '원피스', '스캐너 + 하트 하나 더', { hint: true, hearts: 4 },
-      { anime: 1, mouth: 'grin', style: 'armor', suit: '#4fc3f7', accent: '#2e3a8a', line: '#ffffff', emblem: '#1d4ed8', pattern: 'vest', mark: 'star', head: 'face', hair: '#29b6f6', hairStyle: 'pompadour', faceMarks: ['sunglasses'], eye: '#1a1a1a', skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#5d4037', bulk: 1.15 }),
+      { op: 'franky', anime: 1, mouth: 'grin', style: 'armor', suit: '#4fc3f7', accent: '#2e3a8a', line: '#ffffff', emblem: '#1d4ed8', pattern: 'vest', mark: 'star', head: 'face', hair: '#29b6f6', hairStyle: 'pompadour', faceMarks: ['sunglasses'], eye: '#1a1a1a', skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#5d4037', bulk: 1.15 }),
     h('kuromi', 'panther', '쿠로미', '산리오', '날쌔고, 하트도 하나 더', { webSpeed: 1.6, cooldown: 180, hearts: 4 },
       { style: 'classic', mascot: 'kuromi', suit: '#222222', accent: '#ff8fc7', line: '#ff8fc7', emblem: '#b388ff', body3: '#222222', legs: '#ffffff', boot: '#222222', hands: '#ffffff' }),
     h('ironheart', 'armor', '아이언하트', '블랙 팬서: 와칸다 포에버', '스캐너 + 하트 +1 + 콤보 1.3배', { hint: true, hearts: 4, comboBonus: 1.3 },
@@ -269,7 +270,7 @@
     h('venom', 'spider', '베놈', '베놈', '모든 것이 천천히 다가와요', { slow: 0.7 },
       { style: 'classic', suit: '#0b0b10', accent: '#0b0b10', line: '#1c1c26', emblem: '#f5f5f5', pattern: 'plain', mark: 'spiderBig', head: 'mask', lensBig: 1, fangs: 1, bulk: 1.15 }),
     h('jinbe', 'shield', '징베', '원피스', '하트를 두 개 더 가지고 시작해요', { hearts: 5 },
-      { anime: 1, mouth: 'smile', style: 'shield', suit: '#1d4ed8', accent: '#f2c94c', line: '#f2c94c', emblem: '#f2c94c', pattern: 'robe', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'slick', faceMarks: ['tusks'], skin: '#4f83c2', glove: '#4f83c2', legs: '#1a1a1a', boot: '#1a1a1a', bulk: 1.2 }),
+      { op: 'jinbe', anime: 1, mouth: 'smile', style: 'shield', suit: '#1d4ed8', accent: '#f2c94c', line: '#f2c94c', emblem: '#f2c94c', pattern: 'robe', mark: 'none', head: 'face', hair: '#1a1a1a', hairStyle: 'slick', faceMarks: ['tusks'], skin: '#4f83c2', glove: '#4f83c2', legs: '#1a1a1a', boot: '#1a1a1a', bulk: 1.2 }),
     // ---- 65~72번째 합류 ----
     h('blue-beetle', 'armor', '블루 비틀', '블루 비틀', '스캐너 + 하트 +2 + 천천히', { hint: true, hearts: 5, slow: 0.85 },
       { style: 'armor', suit: '#1565c0', accent: '#0d1b2a', line: '#0a2a4a', emblem: '#00e5ff', pattern: 'plates', mark: 'beetle', head: 'mask', lens: '#00e5ff' }),
@@ -282,14 +283,14 @@
     h('star-lord', 'archer', '스타로드', '가디언즈 오브 갤럭시', '콤보 점수 2배! 줄도 빨라요', { comboBonus: 2, webSpeed: 1.5 },
       { style: 'archer', suit: '#6d1b1b', accent: '#3e2723', line: '#9e9e9e', emblem: '#9e9e9e', pattern: 'robe', mark: 'none', head: 'mask', helmetMetal: 1, lens: '#ff3b3b', gear: ['blasters'] }),
     h('ace', 'armor', '에이스', '원피스', '스캐너 + 콤보 점수 1.3배', { hint: true, comboBonus: 1.3 },
-      { anime: 1, mouth: 'grin', style: 'armor', suit: '#1a1a1a', accent: '#f2c94c', line: '#f28c28', emblem: '#f28c28', pattern: 'bare', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'messy', hat: 'cowboy', faceMarks: ['freckles'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a', belt: '#f2c94c' }),
+      { op: 'ace', beads: 1, anime: 1, mouth: 'grin', style: 'armor', suit: '#1a1a1a', accent: '#e8742a', line: '#f28c28', emblem: '#f28c28', pattern: 'bare', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'messy', hat: 'cowboy', faceMarks: ['freckles'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a', belt: '#e8742a' }),
     h('loki', 'mystic', '로키', '토르 · 로키', '가장 천천히 + 가짜 보기 + 하트 +1', { slow: 0.65, timeBonus: 2, hint: true, hearts: 4 },
       { style: 'mystic', suit: '#1b5e20', accent: '#1a1a1a', line: '#c9a227', emblem: '#c9a227', pattern: 'robe', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'long', cape: '#1b5e20', gear: ['horns', 'ring'] }),
     h('gamora', 'panther', '가모라', '가디언즈 오브 갤럭시', '아주 빠르고, 하트 +2, 콤보 1.3배', { webSpeed: 1.9, cooldown: 150, hearts: 5, comboBonus: 1.3 },
       { style: 'panther', suit: '#212121', accent: '#455a64', line: '#6b7c85', emblem: '#90a4ae', pattern: 'tactical', mark: 'none', head: 'tint', skinTint: '#43a047', body: 'f', hair: '#2a0f12', hairStyle: 'long', gear: ['sword'] }),
     // ---- 73~80번째 합류 ----
     h('shanks', 'shield', '샹크스', '원피스', '하트 +2, 가짜 보기도 알려줘요', { hearts: 5, hint: true },
-      { anime: 1, mouth: 'smile', style: 'shield', suit: '#f5f5f5', accent: '#1a1a1a', line: '#1a1a1a', emblem: '#c62828', pattern: 'vest', mark: 'none', head: 'face', hair: '#c62828', hairStyle: 'slick', longBack: 1, faceMarks: ['scars3'], cape: '#1a1a1a', gear: ['sword'], skin: '#f3c99a', glove: '#f3c99a', legs: '#8d6e63', boot: '#1a1a1a' }),
+      { op: 'shanks', anime: 1, mouth: 'smile', style: 'shield', suit: '#f5f5f5', accent: '#1a1a1a', line: '#1a1a1a', emblem: '#c62828', pattern: 'vest', mark: 'none', head: 'face', hair: '#c62828', hairStyle: 'slick', longBack: 1, faceMarks: ['scars3'], cape: '#1a1a1a', gear: ['sword'], skin: '#d9a066', glove: '#d9a066', legs: '#8d6e63', boot: '#1a1a1a' }),
   ];
   A.HEROES.forEach((hero, i) => { hero.unlockStars = A.unlockStarsAt(i); });
 

@@ -15,6 +15,8 @@
   'use strict';
 
   const TAU = Math.PI * 2;
+  /** 지금 그리는 캐릭터가 광택 없는 그림체(원피스 · 산리오 · 치이카와)인지 — drawHero 가 정한다 */
+  let NO_GLOSS = false;
 
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -166,6 +168,7 @@
 
   /** 반짝이는 하이라이트 (입체감) */
   function gloss(ctx, x, y, rx, ry) {
+    if (NO_GLOSS) return; // 원피스 · 산리오: 원작처럼 광택 없음
     ctx.save();
     ctx.globalAlpha = 0.22;
     ctx.fillStyle = '#ffffff';
@@ -725,13 +728,23 @@
       ctx.fillStyle = '#d62828';
       ctx.fillRect(21, 6, 22, 3);
       line(ctx, '#c9a227', 0.6, [[13, 9.5], [51, 9.5]]);
-    } else if (h === 'cowboy') {
+    } else if (h === 'cowboy') { // 에이스: 주황 카우보이모자 + 앞의 웃는 얼굴 · 우는 얼굴 장식
       oval(ctx, 32, 9.5, 20, 4, '#e8742a');
       ctx.fillStyle = '#e8742a';
       roundRect(ctx, 22, -1, 20, 11, 5);
       ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(22, 6.5, 20, 2);
-      circle(ctx, 32, 7.5, 1.6, '#d62828');
+      for (const [x, happy] of [[28.5, true], [35.5, false]]) {
+        circle(ctx, x, 3.5, 2.6, '#f2e6c8');
+        circle(ctx, x - 0.9, 3, 0.4, '#1a1a1a');
+        circle(ctx, x + 0.9, 3, 0.4, '#1a1a1a');
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        if (happy) ctx.arc(x, 4, 1, 0.15 * Math.PI, 0.85 * Math.PI);
+        else ctx.arc(x, 5.6, 1, 1.15 * Math.PI, 1.85 * Math.PI);
+        ctx.stroke();
+      }
     } else if (h === 'lawHat') { // 로: 흰 털모자 + 갈색 점 무늬
       ctx.fillStyle = '#f5f5f0';
       roundRect(ctx, 17, 0, 30, 15, 8);
@@ -754,10 +767,11 @@
     if (m.has('freckles')) for (const [x, y] of [[23, 24], [25, 25], [24, 26.5], [39, 24], [41, 25], [40, 26.5]]) circle(ctx, x, y, 0.55, '#8d5524');
     if (m.has('longNose')) { // 우솝: 긴 코
       ctx.fillStyle = look.skin || SKIN;
-      roundRect(ctx, 31, 22, 17, 3.6, 1.8);
+      const ny = look.op ? 24.6 : 22; // 원피스 얼굴은 눈이 아래라 코도 아래로
+      roundRect(ctx, 31, ny, 17, 3.6, 1.8);
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
       ctx.lineWidth = 0.6;
-      ctx.strokeRect(31, 22, 17, 3.6);
+      ctx.strokeRect(31, ny, 17, 3.6);
     }
     if (m.has('curlyBrow')) { // 상디: 꼬인 눈썹 (보이는 쪽)
       ctx.strokeStyle = look.hair || '#f4d35e';
@@ -839,6 +853,210 @@
     circle(ctx, 23, 25, 2, '#ff6b81');
     circle(ctx, 41, 25, 2, '#ff6b81');
     ctx.restore();
+  }
+
+
+  // ---------- 원피스 (캐릭터별 얼굴 · 눈 · 머리카락) ----------
+  // 원작(오다 에이치로) 치비 그림 특징: 볼 · 턱선이 있는 얼굴 + 귀, 캐릭터마다 다른 눈매(둥근 · 날카로운 · 차분한),
+  // 머리카락 아래 얼굴 그림자(애니 명암), 굵은 검은 선, 광택 없음. look.op = 캐릭터 id.
+
+  /** 캐릭터별 눈매 · 입 · 특징 */
+  const OP = {
+    luffy: { eye: 'round', mouth: 'grin', wide: 1 },
+    zoro: { eye: 'sharp', mouth: 'smirk' },
+    nami: { eye: 'round', mouth: 'grin', lash: 1, blush: 1 },
+    usopp: { eye: 'round', mouth: 'grin' },
+    sanji: { eye: 'sharp', mouth: 'smirk', hideLeft: 1 },
+    robin: { eye: 'calm', mouth: 'smile', lash: 1 },
+    franky: { eye: 'none', mouth: 'grin', wide: 1 },
+    jinbe: { eye: 'sharp', mouth: 'smile', thickBrow: 1 },
+    ace: { eye: 'sharp', mouth: 'grin' },
+    shanks: { eye: 'calm', mouth: 'smile', stubble: 1 },
+    law: { eye: 'sharp', mouth: 'smirk', bags: 1 },
+  };
+
+  /** 얼굴 윤곽: 넓은 볼에서 둥근 턱으로 (원피스 치비) */
+  function opFacePath(ctx) {
+    ctx.beginPath();
+    ctx.moveTo(18, 18);
+    ctx.bezierCurveTo(18, 28, 24, 35.5, 32, 36);
+    ctx.bezierCurveTo(40, 35.5, 46, 28, 46, 18);
+    ctx.bezierCurveTo(46, 9, 39.5, 5, 32, 5);
+    ctx.bezierCurveTo(24.5, 5, 18, 9, 18, 18);
+    ctx.closePath();
+  }
+
+  /** 머리카락 한 덩어리: 아래로 그림자(피부 어두운 색)를 먼저 깔고 머리색으로 덮는다 */
+  function opHair(ctx, look, pts, shadow = true) {
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+    };
+    if (shadow) {
+      ctx.save();
+      ctx.translate(0, 1.6);
+      ctx.fillStyle = shade(look.skin || SKIN, -0.16);
+      path();
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = look.hair || '#1a1a1a';
+    path();
+    ctx.fill();
+  }
+
+  /** 뒤쪽 머리 (몸보다 먼저): 긴 머리 캐릭터 */
+  function opHairBack(ctx, look) {
+    const c = look.hair || '#1a1a1a';
+    const wave = (x0, x1, y, amp) => { const p = []; for (let x = x1; x >= x0; x -= 3) p.push([x, y + ((x / 3) % 2 ? amp : 0)]); return p; };
+    if (look.op === 'nami') poly(ctx, c, [[16, 12], [48, 12], [52, 30], [51, 46], ...wave(13, 51, 46, 3), [13, 46], [12, 30]]);
+    if (look.op === 'robin') poly(ctx, c, [[16, 10], [48, 10], [50, 30], [50, 48], [14, 48], [14, 30]]);
+    if (look.op === 'shanks') poly(ctx, c, [[16, 12], [48, 12], [50, 26], [49, 37], [45, 33], [43, 38], [21, 38], [19, 33], [15, 37], [14, 26]]);
+    if (look.op === 'ace') poly(ctx, c, [[16, 12], [48, 12], [49, 26], [48, 33], [44, 30], [41, 34], [23, 34], [20, 30], [16, 33], [15, 26]]);
+    if (look.op === 'sanji') poly(ctx, c, [[17, 12], [47, 12], [47, 28], [17, 28]]);
+  }
+
+  /** 앞쪽 머리 (얼굴 위) */
+  function opHairFront(ctx, look) {
+    const h = (pts) => opHair(ctx, look, pts);
+    switch (look.op) {
+      case 'luffy': // 삐죽삐죽 검은 앞머리 (모자 아래)
+        h([[17, 19], [17, 9], [47, 9], [47, 19], [44.5, 14], [42.5, 19.5], [40, 13], [37.5, 19], [35, 13.5], [32.5, 18.5], [30, 13.5], [27.5, 19.5], [25, 13], [22.5, 19], [20, 14]]);
+        break;
+      case 'zoro': // 짧고 삐죽한 초록 머리 (이마가 보인다)
+        h([[17.5, 18], [17, 9], [20, 4], [24, 6], [27, 2.5], [31, 5], [35, 2], [38, 5], [42, 3.5], [44.5, 7], [47, 9], [46.5, 18], [44, 13], [40, 12.5], [36, 11], [31, 12], [26, 11], [22, 12.5], [19.5, 14]]);
+        break;
+      case 'nami': // 한쪽으로 넘긴 앞머리
+        h([[16.5, 22], [17, 9], [25, 4], [36, 4], [46, 9], [47.5, 22], [45, 15], [41, 12.5], [37, 9.5], [33, 13], [27, 15.5], [22, 18.5], [19.5, 22]]);
+        break;
+      case 'sanji': // 한쪽 눈을 덮는 금발 앞머리 + 단발
+        h([[17, 26], [17, 9], [25, 4], [38, 4], [46.5, 9], [47, 26], [44.5, 19], [42, 13.5], [38, 12], [34, 14], [31, 18], [30, 27], [27, 28.5], [23, 26], [20, 22]]);
+        break;
+      case 'robin': // 이마를 드러낸 검은 생머리, 얼굴 옆으로 긴 머리
+        h([[15.5, 34], [16.5, 10], [24, 4.5], [40, 4.5], [47.5, 10], [48.5, 34], [45.5, 33], [45, 18], [41, 10.5], [32, 9.5], [23, 10.5], [19, 18], [18.5, 33]]);
+        break;
+      case 'shanks': // 뒤로 넘긴 빨간 머리 + 이마의 잔머리
+        h([[17, 24], [17, 10], [24, 4], [40, 4], [47, 10], [47, 24], [45, 16], [40, 11], [32, 10], [24, 11], [19, 16]]);
+        line(ctx, look.hair, 1, [[29, 10.5], [27.5, 15.5]]);
+        line(ctx, look.hair, 1, [[33.5, 10.5], [35, 15]]);
+        break;
+      case 'ace': // 물결치는 검은 앞머리 (모자 아래)
+        h([[17, 22], [17, 9], [47, 9], [47, 22], [44, 15.5], [41.5, 18], [39, 13.5], [36, 17], [33, 13], [30, 17], [27, 13.5], [24, 18], [21, 14.5]]);
+        break;
+      case 'law': // 짧은 검은 머리 (털모자 아래) + 구레나룻
+        h([[17.5, 26], [17, 10], [47, 10], [46.5, 26], [44.5, 18], [41, 14.5], [36, 15.5], [32, 14], [28, 15.5], [23, 14.5], [19.5, 18]]);
+        break;
+      case 'usopp': // 풍성한 곱슬머리
+        for (const [x, y, r] of [[19, 15, 5], [24, 8.5, 5], [31, 6, 5], [38, 7, 5], [44, 12, 5], [46, 19, 4.2], [17.5, 21, 4.2]]) circle(ctx, x, y, r, look.hair);
+        break;
+      case 'jinbe': // 뒤로 묶은 검은 머리
+        h([[18, 16], [20, 7], [32, 3.5], [44, 7], [46, 16], [42, 11], [32, 9.5], [22, 11]]);
+        circle(ctx, 32, 2.5, 3.2, look.hair);
+        break;
+      case 'franky': // 앞으로 솟은 파란 머리
+        h([[18, 16], [19, 8], [30, 3], [46, 0], [53, 4], [46, 9], [44, 14], [32, 11], [22, 12.5]]);
+        break;
+      default:
+    }
+  }
+
+  /** 눈 (캐릭터별 눈매) */
+  function opEyes(ctx, look, cfg) {
+    const iris = look.eye || '#3a2414';
+    for (const [x, side] of [[26.5, -1], [37.5, 1]]) {
+      if (cfg.hideLeft && side === -1) continue; // 앞머리로 가린 눈 (상디)
+      const outer = x + side * 3.6, inner = x - side * 3.4;
+      if (cfg.eye === 'none') continue;
+      if (cfg.eye === 'round') {
+        oval(ctx, x, 22.6, 3.2, 3.8, '#ffffff');
+        oval(ctx, x, 23.2, 2.4, 3.1, iris);
+        oval(ctx, x, 23.5, 1.2, 1.6, '#111111');
+        circle(ctx, x - 0.9, 21.6, 1, '#ffffff');
+        line(ctx, '#111111', 1.5, [[outer, 21.5], [x, 18.6], [inner, 21]]);
+        line(ctx, '#111111', 1.3, [[x + side * 3.2, 17.4], [x, 16], [x - side * 3.2, 16.8]]); // 둥근 눈썹
+      } else if (cfg.eye === 'sharp') {
+        oval(ctx, x, 22.6, 3.3, 2.4, '#ffffff');
+        oval(ctx, x, 22.8, 1.7, 2.2, iris);
+        oval(ctx, x, 22.9, 0.9, 1.2, '#111111');
+        circle(ctx, x - 0.6, 22, 0.6, '#ffffff');
+        line(ctx, '#111111', 1.7, [[outer, 20.2], [inner, 21.6]]); // 날카로운 윗눈꺼풀
+        line(ctx, '#111111', 0.7, [[outer - side * 0.8, 24.4], [inner + side * 0.5, 24.6]]);
+        line(ctx, '#111111', cfg.thickBrow ? 2.4 : 1.5, [[x + side * 3.8, 16.4], [x - side * 3.4, 18.2]]); // 안쪽이 내려간 눈썹
+      } else { // calm: 반쯤 감은 차분한 눈
+        oval(ctx, x, 23, 3.2, 2.4, '#ffffff');
+        oval(ctx, x, 23.6, 1.9, 1.9, iris);
+        oval(ctx, x, 23.7, 0.9, 1, '#111111');
+        ctx.fillStyle = shade(look.skin || SKIN, -0.05);
+        ctx.fillRect(x - 3.4, 20, 6.8, 2.2); // 윗눈꺼풀이 눈 위를 덮음
+        line(ctx, '#111111', 1.5, [[outer, 22.2], [inner, 22.2]]);
+        line(ctx, '#111111', 1.2, [[x + side * 3.4, 18.4], [x - side * 3.2, 18]]);
+      }
+      if (cfg.lash) line(ctx, '#111111', 1, [[outer, 20.8], [outer + side * 1.6, 19.6]]);
+      if (cfg.bags) line(ctx, shade(look.skin || SKIN, -0.3), 0.6, [[x - 2.6, 26], [x, 26.7], [x + 2.6, 26]]); // 로: 다크서클
+    }
+  }
+
+  /** 입 */
+  function opMouth(ctx, look, cfg) {
+    if (cfg.mouth === 'grin') {
+      const w = cfg.wide ? 8.5 : 6.5;
+      ctx.fillStyle = '#5a1414';
+      ctx.beginPath();
+      ctx.moveTo(32 - w, 28);
+      ctx.quadraticCurveTo(32, 37, 32 + w, 28);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(32 - w + 1, 28, (w - 1) * 2, 1.8);
+      oval(ctx, 32, 32.2, w * 0.45, 1.3, '#ff7a8a');
+      line(ctx, '#111111', 0.9, [[32 - w, 28], [32 + w, 28]]);
+    } else if (cfg.mouth === 'smirk') {
+      line(ctx, '#3a1414', 1.1, [[29, 30], [33, 30.4], [35.5, 28.8]]);
+    } else {
+      ctx.strokeStyle = '#3a1414';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(32, 28, 3, 0.25 * Math.PI, 0.75 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  /** 원피스 캐릭터 머리 (앞모습) */
+  function opHead(ctx, look) {
+    const cfg = OP[look.op] || OP.luffy;
+    const skin = look.skin || SKIN;
+    oval(ctx, 17.5, 22, 2.4, 3.4, skin); // 귀
+    oval(ctx, 46.5, 22, 2.4, 3.4, skin);
+    ctx.fillStyle = skin;
+    opFacePath(ctx);
+    ctx.fill();
+    if (cfg.stubble) { // 샹크스: 턱수염
+      ctx.save();
+      opFacePath(ctx);
+      ctx.clip();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = shade(look.hair || '#c62828', -0.2);
+      ctx.beginPath();
+      ctx.ellipse(32, 37, 7.5, 3.6, 0, Math.PI, TAU); // 턱 끝만
+      ctx.lineTo(41.5, 40);
+      ctx.lineTo(22.5, 40);
+      ctx.fill();
+      ctx.restore();
+    }
+    line(ctx, shade(skin, -0.25), 0.8, [[31.5, 25.6], [32.6, 26.4]]); // 코 그림자
+    opEyes(ctx, look, cfg);
+    opMouth(ctx, look, cfg);
+    if (cfg.blush) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      circle(ctx, 22.5, 27, 2, '#ff6b81');
+      circle(ctx, 41.5, 27, 2, '#ff6b81');
+      ctx.restore();
+    }
+    faceMarks(ctx, look);
+    opHairFront(ctx, look);
   }
 
   /** 해골 얼굴 (브룩) */
@@ -1031,7 +1249,7 @@
     const bodySkin = pt === 'skin' || pt === 'rock' || pt === 'bark';
     const showHair = ['face', 'domino', 'tint', 'android'].includes(head) && !look.bald;
     if (!back) filmBackGear(ctx, look);
-    if (showHair && !back) hairBack(ctx, look);
+    if (showHair && !back) { if (look.op) opHairBack(ctx, look); else hairBack(ctx, look); }
 
     // 몸
     const legs = look.legs || (bodySkin ? look.suit : pt === 'amazon' ? skin : pt === 'robe' ? shade(look.suit, -0.25)
@@ -1154,6 +1372,10 @@
     }
     if (!back) chestMark(ctx, look);
 
+    if (look.op === 'shanks') { // 샹크스: 목이 높고 소매 없는 검은 망토 (어깨 위로 솟은 깃)
+      poly(ctx, '#1a1a1a', [[14, 40], [18, 30], [24, 26], [26, 34], [20, 46]]);
+      poly(ctx, '#1a1a1a', [[50, 40], [46, 30], [40, 26], [38, 34], [44, 46]]);
+    }
     // 머리 (원피스 치비는 머리를 더 크게 — 목 위를 기준으로 1.2배)
     ctx.save();
     if (look.anime) {
@@ -1249,6 +1471,14 @@
       }
     } else { // 얼굴이 보이는 히어로
       const face = head === 'tint' ? (look.skinTint || look.suit) : head === 'android' ? look.line : skin;
+      if (look.op && !back) { // 원피스: 캐릭터별 얼굴
+        opHead(ctx, look);
+        if (look.hat) drawHat(ctx, look);
+        ctx.restore();
+        if (look.beads) for (let i = 0; i < 9; i++) circle(ctx, 22 + i * 2.5, 35.5 + Math.sin((i / 8) * Math.PI) * 3, 1.3, '#c62828'); // 에이스 구슬 목걸이
+        filmGear(ctx, look, back, P);
+        return;
+      }
       circle(ctx, 32, 20, 14, back && showHair ? hairC : face);
       if (showHair) hairFront(ctx, look, back);
       if (look.pattern === 'bark') { // 그루트: 머리 위 나뭇가지 · 잎 + 얼굴 나뭇결
@@ -1375,7 +1605,7 @@
         line(ctx, '#1a1a1a', 0.9, [[30, 28], [32, 29], [35.5, 28]]);
       }
     } else if (m === 'cinnamo') { // 시나모롤: 흰 강아지 · 옆으로 늘어진 큰 귀 · 파란 눈
-      for (const s of [-1, 1]) oval(ctx, 32 + s * 17, 18, 11, 5, W, s * 0.35);
+      for (const s of [-1, 1]) oval(ctx, 32 + s * 15.5, 23, 11.5, 4.8, W, s * 0.7); // 아래로 길게 늘어진 귀
       oval(ctx, 32, 21, 15, 13, W);
       if (!back) {
         for (const x of [26, 38]) { oval(ctx, x, 22, 1.9, 2.5, '#2b6cb0'); circle(ctx, x - 0.5, 21, 0.7, W); }
@@ -1454,8 +1684,14 @@
       oval(ctx, 32, 21, 15, 13, look.suit);
       if (!back) {
         oval(ctx, 32, 23, 11, 9, W);
-        dotEyes(ctx, 21, 4.5, 2, 1.5);
-        oval(ctx, 32, 25.5, 4, 1.8, '#ffc107');
+        for (const x of [27.5, 36.5]) { // 축 처진 눈꺼풀: 반쯤 감은 시큰둥한 눈 (원작 특징)
+          oval(ctx, x, 21.5, 2, 2, '#1a1a1a');
+          ctx.fillStyle = W;
+          ctx.fillRect(x - 2.4, 18.8, 4.8, 2.4);
+          line(ctx, '#1a1a1a', 1.1, [[x - 2.6, 21], [x + 2.6, 21]]);
+        }
+        oval(ctx, 32, 26, 4.2, 1.8, '#ffc107'); // 노란 부리 (뾰로통)
+        line(ctx, '#c79100', 0.6, [[28.5, 26], [35.5, 26]]);
       }
     }
   }
@@ -1637,6 +1873,7 @@
   A.drawHero = function (ctx, hero, w, h, opts = {}) {
     const look = hero.look;
     const chii = CHIIKAWA.has(look.mascot);
+    NO_GLOSS = !!(look.op || look.mascot);
     const art = document.createElement('canvas');
     art.width = w;
     art.height = h;
@@ -1644,6 +1881,10 @@
     a.save();
     a.scale(w / 64, h / 72);
     const P = resolvePose(opts.pose || 'idle');
+    if (look.anime || look.skull || look.mascot === 'chopper') { // 원피스: 머리 · 모자가 커서 화면에 다 들어가도록 전체를 발 밑 기준 90% 로
+      a.translate(3.2, 7.2);
+      a.scale(0.9, 0.9);
+    }
     if (P.lean) { // 발 밑을 중심으로 몸을 기울인다
       a.translate(LEAN_PIVOT[0], LEAN_PIVOT[1]);
       a.rotate(P.lean);
