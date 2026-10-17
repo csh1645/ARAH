@@ -4,7 +4,7 @@ GitHub 저장소(`csh1645/ARAH`)의 `main` 브랜치에 push하면 Vercel이 자
 
 * **배포 주소:** https://arah-web-olive.vercel.app/ (2026-10-10 최초 배포)
 
-## 최초 설정 (New Project)
+## 최초 설정 (New Project) — 2026-10-10 ~ 10-17 (빌드 없는 순수 HTML 시절, 지금은 아래 "Vite 전환 후 설정")
 
 | 항목 | 값 | 이유 |
 |---|---|---|
@@ -15,7 +15,7 @@ GitHub 저장소(`csh1645/ARAH`)의 `main` 브랜치에 push하면 Vercel이 자
 | Install Command | (비움) | 설치할 패키지 없음 |
 | Environment Variables | (없음) | 게임은 서버 비밀 값을 쓰지 않습니다 |
 
-## Vite 전환 후 설정 (feature/vite-pipeline 을 main 에 합칠 때, [ADR-0008](../decisions/ADR-0008-vite-content-pipeline.md))
+## Vite 전환 후 설정 — 2026-10-17 적용 (feature/vite-pipeline 을 main 에 합칠 때, [ADR-0008](../decisions/ADR-0008-vite-content-pipeline.md))
 
 Vercel 프로젝트 → Settings → Build and Deployment 에서 **합치기 직전에** 바꿉니다.
 
