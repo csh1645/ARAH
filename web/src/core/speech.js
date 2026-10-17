@@ -5,6 +5,7 @@
  * @see doc/decisions/ADR-0004-pronunciation.md
  *
  * 1순위: web/assets/audio/words/ 의 미국 원어민 발음 파일 (모든 PC · 모바일 · 웹에서 같은 소리)
+ *        단어 · 어구 · 문장 모두 파일이 있다. 목록 키는 소문자 원문 (예: "i am happy.")
  * 2순위: 기기 음성 합성(Web Speech API) 중 가장 좋은 미국 영어 음성 (파일이 없거나 재생 실패 시)
  *
  * 모바일(특히 iOS)은 사용자가 화면을 누르지 않은 상태에서 소리 재생을 막는다.
@@ -102,7 +103,7 @@
   /**
    * 영어 단어를 미국 원어민 발음으로 들려준다. 이전에 나던 소리는 끊는다.
    * 발음 파일이 있으면 파일을, 없거나 재생에 실패하면 음성 합성을 쓴다.
-   * @param {string} text 읽을 영어 단어 (또는 짧은 문장)
+   * @param {string} text 읽을 영어 단어 · 어구 · 문장 (목록에서 소문자로 찾는다)
    */
   A.speak = function (text) {
     const file = A.WORD_AUDIO && A.WORD_AUDIO[String(text).toLowerCase()];
