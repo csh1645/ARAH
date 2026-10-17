@@ -1170,44 +1170,6 @@
         ctx.fill();
         ctx.save(); ctx.globalAlpha = 0.5; circle(ctx, 20, 24, 2, '#ff6b9a'); circle(ctx, 44, 24, 2, '#ff6b9a'); ctx.restore();
       }
-    } else if (m === 'chiikawa' || m === 'hachiware' || m === 'usagi') { // 치이카와 친구들: 동그란 얼굴 · 점 눈 · 빗금 볼
-      const face = look.suit;
-      if (m === 'chiikawa') for (const s of [-1, 1]) circle(ctx, 32 + s * 9.5, 9.5, 3.8, face);
-      if (m === 'hachiware') for (const s of [-1, 1]) {
-        poly(ctx, look.accent, [[32 + s * 5, 10], [32 + s * 12, 1.5], [32 + s * 15, 12]]);
-        poly(ctx, '#f7b7c3', [[32 + s * 8, 9], [32 + s * 12, 4.5], [32 + s * 13.3, 10.5]]);
-      }
-      if (m === 'usagi') for (const s of [-1, 1]) {
-        oval(ctx, 32 + s * 5.5, -1, 3.6, 11, face, s * 0.12);
-        oval(ctx, 32 + s * 5.5, 0, 1.6, 7.5, '#f7b7c3', s * 0.12);
-      }
-      oval(ctx, 32, 21, 15.5, 13, face);
-      if (m === 'hachiware') { // 머리 위 파란 무늬 (가운데가 갈라진 모양)
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(32, 21, 15.5, 13, 0, 0, TAU);
-        ctx.clip();
-        poly(ctx, look.accent, [[14, 8], [50, 8], [50, 19], [41, 18], [32, 11.5], [23, 18], [14, 19]]);
-        ctx.restore();
-      }
-      if (!back) {
-        for (const x of [26.5, 37.5]) {
-          oval(ctx, x, 21.5, 1.6, 2, '#1a1a1a');
-          circle(ctx, x - 0.45, 20.8, 0.55, '#ffffff');
-        }
-        for (const x of [21.5, 42.5]) { // 분홍 볼 + 빗금 세 줄
-          oval(ctx, x, 25.5, 3.2, 2, '#ffb3c1');
-          for (const dx of [-1.3, 0, 1.3]) line(ctx, '#f06292', 0.5, [[x + dx + 0.6, 24.6], [x + dx - 0.6, 26.4]]);
-        }
-        if (m === 'usagi') { // 활짝 웃는 입
-          ctx.fillStyle = '#7a2a2a';
-          ctx.beginPath();
-          ctx.arc(32, 25.5, 2.6, 0, Math.PI);
-          ctx.fill();
-        } else {
-          line(ctx, '#3a2a2a', 0.8, [[30.6, 25.6], [31.3, 26.4], [32, 25.8], [32.7, 26.4], [33.4, 25.6]]); // 작은 w 입
-        }
-      }
     } else if (m === 'badtz') { // 배드바츠마루: 검은 펭귄 · 삐죽 머리 · 노란 부리
       poly(ctx, look.suit, [[22, 10], [24, 1], [28, 7], [31, -1], [34, 6], [38, 0], [40, 8], [43, 3], [43, 12]]);
       oval(ctx, 32, 21, 15, 13, look.suit);
@@ -1217,6 +1179,80 @@
         oval(ctx, 32, 25.5, 4, 1.8, '#ffc107');
       }
     }
+  }
+
+  /**
+   * 치이카와 친구들 (치이카와 · 하치와레 · 우사기) — 원작 특징:
+   * 머리와 몸이 하나로 이어진 찹쌀떡 같은 동그란 몸, 아주 짧은 손발, 큰 반짝이가 있는 까만 눈,
+   * 빗금 들어간 분홍 볼, 작은 입, 조금 굵은 검은 손그림 선(drawHero 외곽선).
+   */
+  function drawChiikawa(ctx, look, back, P) {
+    const m = look.mascot;
+    const c = look.suit;
+    const run = P.legs[0] - P.legs[1]; // 걷기 · 뛰기 때 발 엇갈림
+    const hop = P.name === 'jump' || P.name === 'win' ? -3 : 0; // 뛰어오를 때 몸 전체가 위로
+    const BODY = [32, 43, 19.5, 16.5]; // 몸 전체 = 납작하고 동그란 떡 하나 (가로가 더 넓다)
+    ctx.save();
+    ctx.translate(0, hop);
+    // 귀 (몸보다 먼저)
+    if (m === 'chiikawa') for (const s of [-1, 1]) circle(ctx, 32 + s * 11.5, 29, 4.4, c);
+    if (m === 'hachiware') for (const s of [-1, 1]) {
+      poly(ctx, look.accent, [[32 + s * 6.5, 29], [32 + s * 14, 18.5], [32 + s * 18, 32]]);
+      poly(ctx, '#f7b7c3', [[32 + s * 10, 28], [32 + s * 14, 22], [32 + s * 16, 30]]);
+    }
+    if (m === 'usagi') for (const s of [-1, 1]) {
+      oval(ctx, 32 + s * 6.5, 18, 4, 12.5, c, s * 0.12);
+      oval(ctx, 32 + s * 6.5, 19.5, 1.8, 8.5, '#f7b7c3', s * 0.12);
+    }
+    if (m === 'hachiware') oval(ctx, 51, 54, 3, 5, look.accent, 0.7); // 꼬리
+    // 발: 몸 아래 짧은 둥근 발
+    oval(ctx, 25 + run * 3, 59.5, 5.2, 3.4, c);
+    oval(ctx, 39 - run * 3, 59.5, 5.2, 3.4, c);
+    // 아주 짧은 팔 (몸 옆, 자세 각도를 따라 살짝)
+    for (const [sx, a] of [[14.5, P.l], [49.5, P.r]]) {
+      const ang = Math.max(-2.4, Math.min(2.4, a));
+      oval(ctx, sx + Math.cos(ang) * 3, 49 + Math.sin(ang) * 3, 3.6, 2.8, c, ang);
+    }
+    oval(ctx, BODY[0], BODY[1], BODY[2], BODY[3], c);
+    if (m === 'hachiware') { // 머리 위 파란 무늬 — 가운데가 팔(八)자로 갈라짐
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(BODY[0], BODY[1], BODY[2], BODY[3], 0, 0, TAU);
+      ctx.clip();
+      poly(ctx, look.accent, [[10, 24], [54, 24], [54, 40], [44, 37], [32, 31], [20, 37], [10, 40]]);
+      ctx.restore();
+    }
+    if (!back) {
+      // 눈: 까만 타원 + 큰 반짝이
+      for (const x of [25.5, 38.5]) {
+        oval(ctx, x, 41, 2.4, 2.9, '#141414');
+        circle(ctx, x - 0.7, 40, 1.1, '#ffffff');
+        circle(ctx, x + 0.8, 42.2, 0.45, '#ffffff');
+      }
+      // 분홍 볼 + 빗금
+      for (const x of [19.5, 44.5]) {
+        oval(ctx, x, 45.5, 3.7, 2.3, '#ffb3c1');
+        for (const dx of [-1.4, 0, 1.4]) line(ctx, '#ea6a8a', 0.55, [[x + dx + 0.7, 44.5], [x + dx - 0.7, 46.5]]);
+      }
+      // 입
+      if (m === 'usagi' || P.face === 'happy') {
+        ctx.fillStyle = '#7a2a2a';
+        ctx.beginPath();
+        ctx.arc(32, 45.2, m === 'usagi' ? 2.9 : 2.1, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = '#ff8a9a';
+        ctx.beginPath();
+        ctx.arc(32, 46.8, m === 'usagi' ? 1.4 : 1, 0, Math.PI);
+        ctx.fill();
+      } else {
+        line(ctx, '#2a1a1a', 0.75, [[30.4, 45.2], [31.2, 46.1], [32, 45.4], [32.8, 46.1], [33.6, 45.2]]);
+      }
+      if (P.face === 'hurt') { // 울먹이는 눈물 (치이카와 특유)
+        oval(ctx, 23, 44.5, 1, 1.6, '#8fd3ff');
+        oval(ctx, 41, 44.5, 1, 1.6, '#8fd3ff');
+      }
+    }
+    ctx.restore();
   }
 
   /**
@@ -1288,6 +1324,9 @@
     panther: drawPanther,
   };
 
+  /** 치이카와 친구들 (drawChiikawa) */
+  const CHIIKAWA = new Set(['chiikawa', 'hachiware', 'usagi']);
+
   /** 몸 기울기(lean) 중심: 발 밑 */
   const LEAN_PIVOT = [32, 70];
 
@@ -1320,6 +1359,7 @@
    */
   A.drawHero = function (ctx, hero, w, h, opts = {}) {
     const look = hero.look;
+    const chii = CHIIKAWA.has(look.mascot);
     const art = document.createElement('canvas');
     art.width = w;
     art.height = h;
@@ -1332,7 +1372,8 @@
       a.rotate(P.lean);
       a.translate(-LEAN_PIVOT[0], -LEAN_PIVOT[1]);
     }
-    if (look.mascot) drawMascot(a, look, !!opts.back, P); // 산리오 캐릭터
+    if (CHIIKAWA.has(look.mascot)) drawChiikawa(a, look, !!opts.back, P); // 치이카와 친구들
+    else if (look.mascot) drawMascot(a, look, !!opts.back, P); // 산리오 캐릭터
     else if (look.head) drawFilm(a, look, !!opts.back, P); // 영화 원조 히어로 (데이터로 그리기)
     else (BODIES[look.style] || drawSpider)(a, look, !!opts.back, P);
     faceFx(a, P);
@@ -1345,10 +1386,10 @@
     const s = sil.getContext('2d');
     s.drawImage(art, 0, 0);
     s.globalCompositeOperation = 'source-in';
-    s.fillStyle = look.mascot ? 'rgba(40, 28, 24, 0.95)' : 'rgba(12, 10, 28, 0.92)';
+    s.fillStyle = chii ? '#1a1a1a' : look.mascot ? 'rgba(40, 28, 24, 0.95)' : 'rgba(12, 10, 28, 0.92)';
     s.fillRect(0, 0, w, h);
 
-    const t = Math.max(1, (w / 64) * (look.mascot ? 0.55 : 0.9)); // 외곽선 두께 (기준 좌표 약 0.9, 산리오는 원작처럼 얇게)
+    const t = Math.max(1, (w / 64) * (chii ? 0.8 : look.mascot ? 0.55 : 0.9)); // 외곽선 두께 (산리오는 원작처럼 얇게, 치이카와는 손그림 선)
     ctx.save();
     ctx.clearRect(0, 0, w, h);
     for (const [dx, dy] of [[t, 0], [-t, 0], [0, t], [0, -t], [t, t], [-t, -t], [t, -t], [-t, t]]) ctx.drawImage(sil, dx, dy);
