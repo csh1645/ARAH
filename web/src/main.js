@@ -47,6 +47,7 @@ import './game/three/props3d.js';
 import './game/three/showcase.js'; // 메뉴 로비: 3D 히어로 무대 · 초상화
 import './game/travels.js';
 import './game/attacks.js';
+import './game/signatures.js'; // 캐릭터별 필살기 · 작품별 액션 연출 (attacks 다음)
 import './game/views/gate-view-2d.js';
 import './game/views/gate-view-3d.js';
 import './game/modes/run-mode.js';

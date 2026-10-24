@@ -48,7 +48,9 @@
  * @property {string} [glove]   장갑 색 (기본 accent) / [boot] 부츠 색 (기본 accent) / [lens] 마스크 눈 색 (기본 흰색) / [skinTint] tint 머리 피부색
  * @property {number} [bulk]    몸집 배율 (기본 1)
  * @property {string} [mascot]  마스코트 종류 (game/hero-art.js mascotHead): 산리오 kitty · melody · kuromi · cinnamo · purin · pochacco · keroppi · badtz · hangyodon,
- *           치이카와 chiikawa · hachiware · usagi, 원피스 chopper
+ *           치이카와 chiikawa · hachiware · usagi
+ * @property {number} [original] 오리지널 캐릭터 (이 게임만의 새 캐릭터 — 기존 작품을 참고하지 않음, 작품 연출 'original')
+ * @property {string} [orig]    오리지널 그림 종류 (game/hero-art.js drawOriginal): dino · cosmo · chef · tvbot · berry · witch · sheep · lion, 원피스 chopper
  * @property {string} [hat]       모자: straw · cowboy · topHat · lawHat (원피스)
  * @property {string} [op]        원피스 캐릭터 id — 캐릭터별 얼굴 윤곽 · 눈매 · 머리카락 (game/hero-art.js OP) / [beads] 에이스 목걸이
  * @property {number} [anime]     애니 치비 얼굴 + 큰 머리 (원피스) / [mouth] grin · smile · smirk / [eye] 눈동자 색
@@ -87,6 +89,7 @@
  * @property {HeroAbility} ability
  * @property {number} unlockStars  합류에 필요한 스타 합계 (목록 순서로 정해진다, 0 = 처음부터)
  * @property {HeroLook} look
+ * @property {'original'|'marvel'|'dc'|'onepiece'|'sanrio'|'chiikawa'} origin 출신(작품) — 도감 묶음 (A.originOf)
  */
 (function (A) {
   'use strict';
@@ -291,8 +294,55 @@
     // ---- 73~80번째 합류 ----
     h('shanks', 'shield', '샹크스', '원피스', '하트 +2, 가짜 보기도 알려줘요', { hearts: 5, hint: true },
       { op: 'shanks', anime: 1, mouth: 'smile', style: 'shield', suit: '#f5f5f5', accent: '#1a1a1a', line: '#1a1a1a', emblem: '#c62828', pattern: 'vest', mark: 'none', head: 'face', hair: '#c62828', hairStyle: 'slick', longBack: 1, faceMarks: ['scars3'], cape: '#1a1a1a', gear: ['sword'], skin: '#d9a066', glove: '#d9a066', legs: '#8d6e63', boot: '#1a1a1a' }),
+    h('dino-dodo', 'giant', '디노 도도', '오리지널', '넓은 판정 + 생각할 시간 2초 더', { hitRadius: 26, timeBonus: 2 },
+      { style: 'giant', original: 1, orig: 'dino', suit: '#5cc46a', accent: '#c8f0a8', line: '#2f8a46', emblem: '#ffd54f' }),
+    h('cosmo-kong', 'spider', '코스모 콩', '오리지널', '콤보 점수가 1.4배로 올라가요', { comboBonus: 1.4 },
+      { style: 'classic', original: 1, orig: 'cosmo', suit: '#f5f7fb', accent: '#ff8a3d', line: '#8fb8de', emblem: '#ff8a3d' }),
+    h('chef-pangpang', 'shield', '셰프 팡팡', '오리지널', '하트를 하나 더 가지고 시작해요', { hearts: 4 },
+      { style: 'shield', original: 1, orig: 'chef', suit: '#ffffff', accent: '#ff6b6b', line: '#5c6b7a', emblem: '#ffd54f' }),
+    h('beepo', 'armor', '삐뽀', '오리지널', '스캐너로 가짜 보기 하나를 알려줘요', { hint: true },
+      { style: 'armor', original: 1, orig: 'tvbot', suit: '#ffb84d', accent: '#5ad1c8', line: '#7a5c3a', emblem: '#ff5c8a' }),
+    h('strawberry-ppyong', 'archer', '딸기 뿅', '오리지널', '콤보 1.5배, 가짜 보기도 알려줘요', { comboBonus: 1.5, hint: true },
+      { style: 'archer', original: 1, orig: 'berry', suit: '#ff9ec4', accent: '#e8344a', line: '#3faa4a', emblem: '#fff3b0' }),
+    h('suri-suri', 'mystic', '수리수리', '오리지널', '마법으로 시간이 천천히 흘러요', { slow: 0.75, timeBonus: 1 },
+      { style: 'mystic', original: 1, orig: 'witch', suit: '#7b5cd6', accent: '#ffd54f', line: '#b9a6ff', emblem: '#ffd54f' }),
+    h('mungge', 'thunder', '뭉게', '오리지널', '줄 · 이동이 아주 빨라요', { webSpeed: 1.8, cooldown: 150 },
+      { style: 'classic', original: 1, orig: 'sheep', suit: '#f4f1ff', accent: '#ffd23f', line: '#8b84b8', emblem: '#ffd23f' }),
+    // ---- 81~88번째 합류 ----
+    h('leo', 'panther', '레오', '오리지널', '날렵해서 빠르고, 하트도 하나 더', { webSpeed: 1.6, cooldown: 180, hearts: 4 },
+      { style: 'panther', original: 1, orig: 'lion', suit: '#ffc35c', accent: '#d9822b', line: '#8a4b14', emblem: '#ff8a80' }),
   ];
   A.HEROES.forEach((hero, i) => { hero.unlockStars = A.unlockStarsAt(i); });
+
+  /**
+   * 출신(작품) 묶음 — 히어로 도감에서 이 순서 · 이름으로 묶어 보여 준다 (ui/app.js).
+   * @type {{id: string, name: string, icon: string}[]}
+   */
+  A.HERO_ORIGINS = [
+    { id: 'original', name: '오리지널', icon: '✨' }, // 이 게임만의 새 캐릭터 (저작권 걱정 없음)
+    { id: 'marvel', name: '마블', icon: '🦸' },
+    { id: 'dc', name: 'DC', icon: '🦇' },
+    { id: 'onepiece', name: '원피스', icon: '🏴‍☠️' },
+    { id: 'sanrio', name: '산리오', icon: '🎀' },
+    { id: 'chiikawa', name: '치이카와', icon: '🐹' },
+  ];
+  /** DC 히어로 (나머지 영화 히어로는 마블) */
+  const DC_IDS = new Set(['cyborg', 'blue-beetle', 'wonder-woman', 'aquaman', 'flash', 'shazam', 'superman', 'supergirl', 'batman', 'green-lantern', 'catwoman']);
+  const CHIIKAWA_IDS = new Set(['chiikawa', 'hachiware', 'usagi']);
+  /**
+   * 히어로의 출신(작품) id. 데이터의 universe(작품명) · 외형으로 정한다.
+   * @param {Hero} hero
+   * @returns {'original'|'marvel'|'dc'|'onepiece'|'sanrio'|'chiikawa'}
+   */
+  A.originOf = function (hero) {
+    if (hero.origin) return hero.origin;
+    if (CHIIKAWA_IDS.has(hero.id)) return 'chiikawa';
+    if (hero.universe === '오리지널') return 'original';
+    if (hero.universe === '원피스') return 'onepiece';
+    if (hero.universe === '산리오') return 'sanrio';
+    return DC_IDS.has(hero.id) ? 'dc' : 'marvel';
+  };
+  A.HEROES.forEach((hero) => { hero.origin = A.originOf(hero); });
 
   /**
    * 예전 히어로 id(팀 × 색 변형 시절) → 새 id (영화 원조 히어로, 2026-10-17). 저장된 "고른 히어로 · 합류한 히어로"를 옮길 때 쓴다 (ui/app.js).

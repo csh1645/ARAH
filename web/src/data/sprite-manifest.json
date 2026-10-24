@@ -124,6 +124,14 @@
   "ace": "assets/sprites/heroes/ace",
   "shanks": "assets/sprites/heroes/shanks",
   "hangyodon": "assets/sprites/heroes/hangyodon",
-  "law": "assets/sprites/heroes/law"
+  "law": "assets/sprites/heroes/law",
+  "dino-dodo": "assets/sprites/heroes/dino-dodo",
+  "cosmo-kong": "assets/sprites/heroes/cosmo-kong",
+  "chef-pangpang": "assets/sprites/heroes/chef-pangpang",
+  "beepo": "assets/sprites/heroes/beepo",
+  "strawberry-ppyong": "assets/sprites/heroes/strawberry-ppyong",
+  "suri-suri": "assets/sprites/heroes/suri-suri",
+  "mungge": "assets/sprites/heroes/mungge",
+  "leo": "assets/sprites/heroes/leo"
  }
 }

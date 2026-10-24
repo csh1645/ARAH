@@ -1688,6 +1688,269 @@
     filmGear(ctx, look, back, P);
   }
 
+
+  // ---------- 오리지널 (이 게임만의 새 캐릭터) ----------
+  // 기존 작품의 공식(망토 · 마스크 · 쫄쫄이 슈트 · 가슴 문양)을 쓰지 않는다. 아이가 좋아하는 소재(공룡 옷 · 우주복 · 요리사 · 딸기 …)로
+  // 오리지널만의 그림체: 큰 머리 + 반짝이 세 개의 큰 눈 + 파스텔 색 + 동글동글한 몸 + 큼직한 신발.
+
+  /** 캔버스 하트 */
+  function heartPath(ctx, x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.5, y - r * 0.2, r * 0.55, 0, TAU);
+    ctx.arc(x + r * 0.5, y - r * 0.2, r * 0.55, 0, TAU);
+    ctx.fill();
+    poly(ctx, color, [[x - r * 1.02, y + r * 0.05], [x + r * 1.02, y + r * 0.05], [x, y + r * 1.05]]);
+  }
+
+  /** 오리지널 얼굴: 큰 눈(반짝이 3개) · 분홍 볼 · 작은 입 */
+  function origFace(ctx, y, mouth = 'smile') {
+    for (const x of [26.5, 37.5]) {
+      oval(ctx, x, y, 2.6, 3.3, '#2a2346');
+      circle(ctx, x - 0.9, y - 1.2, 1.1, '#ffffff');
+      circle(ctx, x + 0.9, y + 1.1, 0.55, '#ffffff');
+      circle(ctx, x + 1.2, y - 1.6, 0.4, '#ffffff');
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    oval(ctx, 22, y + 4, 2.8, 1.8, '#ff7a9c');
+    oval(ctx, 42, y + 4, 2.8, 1.8, '#ff7a9c');
+    ctx.restore();
+    if (mouth === 'open') {
+      ctx.fillStyle = '#7a2a3a';
+      ctx.beginPath();
+      ctx.arc(32, y + 4, 2.4, 0, Math.PI);
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = '#7a2a3a';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(32, y + 3.6, 2, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+    }
+  }
+
+  /** 오리지널 몸: 동글동글한 몸통 · 짧은 팔(벙어리장갑) · 큼직한 신발 */
+  function origBody(ctx, P, body, mitt, shoe) {
+    const run = P.legs[0] - P.legs[1];
+    oval(ctx, 26 + run * 3, 64, 6, 4, shoe);
+    oval(ctx, 38 - run * 3, 64, 6, 4, shoe);
+    ctx.fillStyle = body;
+    roundRect(ctx, 21, 38, 22, 24, 10);
+    for (const [sx, a] of [[22, P.l], [42, P.r]]) {
+      const ang = Math.max(-2.5, Math.min(2.5, a));
+      const hx = sx + Math.cos(ang) * 8;
+      const hy = 44 + Math.sin(ang) * 8;
+      line(ctx, body, 6, [[sx, 44], [hx, hy]]);
+      circle(ctx, hx, hy, 3.6, mitt);
+    }
+  }
+
+  /** 손에 든 물건을 손 위치로 옮겨 그린다 (draw 는 손 (0, 0) 기준) */
+  function inHand(ctx, P, draw) {
+    const ang = Math.max(-2.5, Math.min(2.5, P.r));
+    ctx.save();
+    ctx.translate(42 + Math.cos(ang) * 8, 44 + Math.sin(ang) * 8);
+    draw();
+    ctx.restore();
+  }
+
+  const SKIN_O = '#ffd9b8';
+
+  /** 오리지널 캐릭터 한 명 */
+  function drawOriginal(ctx, look, back, P) {
+    const o = look.orig;
+    const L = look;
+    if (o === 'dino') { // 디노 도도: 공룡 후드티 (등 가시 · 꼬리 · 밝은 배)
+      poly(ctx, L.suit, [[40, 52], [56, 60], [44, 60]]); // 꼬리
+      origBody(ctx, P, L.suit, L.suit, L.line);
+      oval(ctx, 32, 52, 7, 8, L.accent);
+      for (const [x, y] of [[20, 14], [25, 7], [32, 4.5], [39, 7], [44, 14]]) poly(ctx, L.emblem, [[x - 3, y + 3], [x, y - 3], [x + 3, y + 3]]); // 가시
+      circle(ctx, 32, 22, 16, L.suit); // 후드
+      if (!back) {
+        oval(ctx, 32, 25, 11.5, 10, SKIN_O); // 얼굴
+        origFace(ctx, 24.5, 'open');
+        for (const x of [24, 40]) poly(ctx, '#ffffff', [[x - 1.6, 13], [x + 1.6, 13], [x, 16]]); // 후드 이빨 장식
+      }
+      return;
+    }
+    if (o === 'cosmo') { // 코스모 콩: 동그란 유리 헬멧 우주복 + 제트팩
+      ctx.fillStyle = '#9aa8b8';
+      roundRect(ctx, 16, 38, 8, 18, 3); // 제트팩
+      roundRect(ctx, 40, 38, 8, 18, 3);
+      poly(ctx, L.accent, [[17, 56], [23, 56], [20, 62]]);
+      poly(ctx, L.accent, [[41, 56], [47, 56], [44, 62]]);
+      origBody(ctx, P, L.suit, L.accent, L.accent);
+      ctx.fillStyle = L.accent;
+      ctx.fillRect(21, 48, 22, 3);
+      circle(ctx, 32, 43, 3, L.line);
+      circle(ctx, 32, 22, 16.5, '#dff1ff'); // 유리 헬멧
+      if (!back) {
+        circle(ctx, 32, 23, 11, SKIN_O);
+        ctx.fillStyle = '#6b4a2b';
+        ctx.beginPath();
+        ctx.arc(32, 21, 11.2, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.fill();
+        origFace(ctx, 23.5);
+      }
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      oval(ctx, 25, 13, 5, 2.6, '#ffffff', -0.5); // 헬멧 반사광
+      ctx.restore();
+      ctx.strokeStyle = L.line;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(32, 22, 16.5, 0, TAU);
+      ctx.stroke();
+      return;
+    }
+    if (o === 'chef') { // 셰프 팡팡: 높은 요리사 모자 · 단추 두 줄 조리복 · 프라이팬
+      origBody(ctx, P, L.suit, L.suit, '#3a3a4a');
+      for (const y of [44, 49, 54]) { circle(ctx, 28.5, y, 1, L.line); circle(ctx, 35.5, y, 1, L.line); }
+      ctx.fillStyle = L.accent; // 빨간 스카프
+      roundRect(ctx, 25, 37, 14, 4, 2);
+      circle(ctx, 32, 23, 14, SKIN_O);
+      ctx.fillStyle = '#ffffff'; // 요리사 모자
+      roundRect(ctx, 20, 9, 24, 7, 3);
+      for (const [x, y, r] of [[24, 4, 6], [32, 1, 7], [40, 4, 6]]) circle(ctx, x, y, r, '#ffffff');
+      if (!back) {
+        ctx.fillStyle = '#5a3a1a'; // 앞머리
+        ctx.fillRect(20, 15, 24, 3);
+        origFace(ctx, 23.5, 'open');
+      }
+      inHand(ctx, P, () => { // 프라이팬 방패
+        line(ctx, '#6b4a2b', 2.4, [[0, 0], [6, -6]]);
+        circle(ctx, 11, -11, 8, '#3a3a4a');
+        circle(ctx, 11, -11, 6, '#5c6b7a');
+        oval(ctx, 11, -11, 3, 2, '#ffe066'); // 계란 프라이
+        circle(ctx, 11, -11, 1.4, '#ffb000');
+      });
+      return;
+    }
+    if (o === 'tvbot') { // 삐뽀: 네모난 TV 머리 로봇 (화면에 하트 · 안테나 둘 · 스프링 다리)
+      const run = P.legs[0] - P.legs[1];
+      for (const [x, d] of [[26, run], [38, -run]]) {
+        ctx.strokeStyle = L.line;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let i = 0; i <= 6; i++) ctx.lineTo(x + d * 3 + (i % 2 ? 2.5 : -2.5), 56 + i * 1.3);
+        ctx.stroke();
+        oval(ctx, x + d * 3, 65, 5.5, 3, L.line);
+      }
+      ctx.fillStyle = L.suit;
+      roundRect(ctx, 20, 38, 24, 18, 4);
+      heartPath(ctx, 32, 46, 3.4, L.emblem);
+      for (const [sx, a] of [[20, P.l], [44, P.r]]) {
+        const ang = Math.max(-2.5, Math.min(2.5, a));
+        line(ctx, L.line, 2, [[sx, 44], [sx + Math.cos(ang) * 8, 44 + Math.sin(ang) * 8]]);
+        circle(ctx, sx + Math.cos(ang) * 8, 44 + Math.sin(ang) * 8, 3, L.accent);
+      }
+      for (const s of [-1, 1]) { line(ctx, L.line, 1.4, [[32 + s * 6, 9], [32 + s * 10, 1]]); circle(ctx, 32 + s * 10, 1, 2, L.emblem); }
+      ctx.fillStyle = L.suit;
+      roundRect(ctx, 15, 8, 34, 28, 6); // TV 머리
+      if (!back) {
+        ctx.fillStyle = '#25324a';
+        roundRect(ctx, 19, 12, 26, 19, 4); // 화면
+        for (const x of [26, 38]) { ctx.fillStyle = L.accent; ctx.fillRect(x - 2, 17, 4, 5); }
+        heartPath(ctx, 32, 26, 2.2, L.emblem);
+        for (const y of [14, 18]) circle(ctx, 47.2, y + 2, 1.1, L.line); // 다이얼
+      }
+      return;
+    }
+    if (o === 'berry') { // 딸기 뿅: 딸기 모자 (씨 · 잎) + 분홍 원피스 + 딸기씨 새총
+      origBody(ctx, P, L.suit, SKIN_O, L.accent);
+      ctx.fillStyle = '#ffffff';
+      for (let x = 22; x <= 42; x += 4) circle(ctx, x, 61, 1.6, '#ffffff'); // 원피스 레이스
+      circle(ctx, 32, 24, 14, SKIN_O);
+      ctx.fillStyle = '#6b3a2a'; // 머리카락
+      ctx.beginPath();
+      ctx.arc(32, 24, 14.4, Math.PI * 0.85, Math.PI * 2.15);
+      ctx.fill();
+      ctx.fillStyle = L.accent; // 딸기 모자
+      ctx.beginPath();
+      ctx.moveTo(15, 18);
+      ctx.quadraticCurveTo(32, -8, 49, 18);
+      ctx.quadraticCurveTo(32, 13, 15, 18);
+      ctx.fill();
+      for (const [x, y] of [[24, 12], [30, 8], [36, 9], [41, 13], [27, 15], [35, 14]]) oval(ctx, x, y, 0.7, 1.1, L.emblem);
+      for (const a of [-0.9, -0.3, 0.3, 0.9]) oval(ctx, 32 + Math.sin(a) * 5, 1 - Math.cos(a) * 2, 2, 4, L.line, a);
+      if (!back) {
+        circle(ctx, 32, 24, 11.5, SKIN_O);
+        ctx.fillStyle = '#6b3a2a';
+        ctx.fillRect(21, 17, 22, 3.5);
+        origFace(ctx, 25);
+      }
+      inHand(ctx, P, () => { // 딸기 모양 새총
+        line(ctx, '#8d5524', 2, [[0, 0], [0, -8]]);
+        line(ctx, '#8d5524', 1.6, [[0, -8], [-3, -12]]);
+        line(ctx, '#8d5524', 1.6, [[0, -8], [3, -12]]);
+        circle(ctx, 0, -13, 2.2, L.accent);
+      });
+      return;
+    }
+    if (o === 'witch') { // 수리수리: 달 · 별 무늬 큰 보라 모자 + 별 지팡이 대신 빗자루
+      inHand(ctx, P, () => { // 빗자루
+        line(ctx, '#8d5524', 2, [[0, 0], [10, 14]]);
+        poly(ctx, '#e8b04a', [[8, 11], [16, 13], [15, 21], [7, 19]]);
+      });
+      origBody(ctx, P, L.suit, L.accent, '#3a2a5a');
+      for (const [x, y] of [[26, 46], [37, 52], [31, 57]]) circle(ctx, x, y, 1.1, L.accent);
+      circle(ctx, 32, 24, 14, SKIN_O);
+      ctx.fillStyle = '#f7c8e8'; // 연분홍 머리카락
+      ctx.beginPath();
+      ctx.arc(32, 24, 14.4, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.fill();
+      oval(ctx, 32, 13, 20, 4.5, L.suit); // 모자 챙
+      poly(ctx, L.suit, [[19, 13], [45, 13], [38, -6], [46, -10], [33, -4]]); // 끝이 꺾인 모자
+      ctx.fillStyle = L.accent; // 초승달
+      ctx.beginPath();
+      ctx.arc(30, 5, 3.4, 0, TAU);
+      ctx.fill();
+      circle(ctx, 31.6, 4.2, 3, L.suit);
+      star(ctx, 37, 8, 2, L.accent);
+      if (!back) {
+        circle(ctx, 32, 24.5, 11.5, SKIN_O);
+        origFace(ctx, 25);
+      }
+      return;
+    }
+    if (o === 'sheep') { // 뭉게: 번개 구름 양 (몽글몽글 털 · 작은 뿔 · 꼬마 번개)
+      origBody(ctx, P, L.suit, '#5c5470', '#5c5470');
+      for (const [x, y, r] of [[22, 46, 6], [32, 44, 7], [42, 46, 6], [26, 54, 6], [38, 54, 6]]) circle(ctx, x, y, r, L.suit); // 털
+      for (const [x, y, r] of [[20, 16, 7], [26, 9, 7], [33, 7, 8], [40, 10, 7], [45, 17, 6], [32, 22, 14]]) circle(ctx, x, y, r, L.suit);
+      for (const s of [-1, 1]) { // 말린 뿔
+        ctx.strokeStyle = L.line;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(32 + s * 13, 15, 3, 0, Math.PI * 1.6);
+        ctx.stroke();
+      }
+      if (!back) {
+        oval(ctx, 32, 25, 9.5, 8.5, '#5c5470'); // 얼굴
+        for (const x of [28, 36]) { circle(ctx, x, 24, 1.8, '#ffffff'); circle(ctx, x - 0.4, 23.6, 0.6, '#2a2346'); }
+        line(ctx, '#ffffff', 0.9, [[30.5, 28], [32, 29], [33.5, 28]]);
+      }
+      poly(ctx, L.accent, [[50, 2], [46, 10], [49, 10], [45, 18], [53, 7], [50, 7], [54, 2]]); // 꼬마 번개
+      return;
+    }
+    if (o === 'lion') { // 레오: 아기 사자 후드티 (갈기 · 동그란 귀 · 발바닥 장갑)
+      origBody(ctx, P, L.suit, L.accent, L.accent);
+      oval(ctx, 32, 52, 6, 7, '#fff1d6');
+      for (let i = 0; i < 12; i++) { // 갈기
+        const a = (i / 12) * TAU;
+        circle(ctx, 32 + Math.cos(a) * 15.5, 22 + Math.sin(a) * 15.5, 5, L.accent);
+      }
+      circle(ctx, 32, 22, 15.5, L.suit);
+      for (const s of [-1, 1]) { circle(ctx, 32 + s * 11, 8, 4, L.suit); circle(ctx, 32 + s * 11, 8, 2, L.emblem); }
+      if (!back) {
+        oval(ctx, 32, 25, 11, 9.5, SKIN_O);
+        origFace(ctx, 24.5, 'open');
+        oval(ctx, 32, 27.5, 1.6, 1.1, '#7a4a2a'); // 사자 코
+      }
+      return;
+    }
+  }
+
   // ---------- 산리오 캐릭터 (마스코트) ----------
   // 사람형 몸 대신 큰 동물 머리 + 작은 몸. look.mascot 종류마다 머리 모양을 그린다. 몸 · 팔다리는 자세(P)를 따른다.
 
@@ -2026,7 +2289,7 @@
   A.drawHero = function (ctx, hero, w, h, opts = {}) {
     const look = hero.look;
     const chii = CHIIKAWA.has(look.mascot);
-    NO_GLOSS = !!(look.op || look.mascot);
+    NO_GLOSS = !!(look.op || look.mascot || look.orig);
     const art = document.createElement('canvas');
     art.width = w;
     art.height = h;
@@ -2034,7 +2297,7 @@
     a.save();
     a.scale(w / 64, h / 72);
     const P = resolvePose(opts.pose || 'idle');
-    if (look.anime || look.skull || look.mascot === 'chopper') { // 원피스: 머리 · 모자가 커서 화면에 다 들어가도록 전체를 발 밑 기준 90% 로
+    if (look.anime || look.skull || look.mascot === 'chopper' || look.orig) { // 원피스: 머리 · 모자가 커서 화면에 다 들어가도록 전체를 발 밑 기준 90% 로
       a.translate(3.2, 7.2);
       a.scale(0.9, 0.9);
     }
@@ -2043,7 +2306,8 @@
       a.rotate(P.lean);
       a.translate(-LEAN_PIVOT[0], -LEAN_PIVOT[1]);
     }
-    if (CHIIKAWA.has(look.mascot)) drawChiikawa(a, look, !!opts.back, P); // 치이카와 친구들
+    if (look.orig) drawOriginal(a, look, !!opts.back, P); // 오리지널 (이 게임만의 새 캐릭터)
+    else if (CHIIKAWA.has(look.mascot)) drawChiikawa(a, look, !!opts.back, P); // 치이카와 친구들
     else if (look.mascot) drawMascot(a, look, !!opts.back, P); // 산리오 캐릭터
     else if (look.head) drawFilm(a, look, !!opts.back, P); // 영화 원조 히어로 (데이터로 그리기)
     else (BODIES[look.style] || drawSpider)(a, look, !!opts.back, P);

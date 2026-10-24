@@ -218,11 +218,20 @@
 
     const heroes = $('#heroes');
     heroes.replaceChildren();
-    // 히어로 도감: 합류 순서대로 한 줄로 (합류한 히어로 → 다음 합류 → 아직 잠긴 히어로)
-    const grid = document.createElement('div');
-    grid.className = 'hero-grid';
-    for (const hero of A.HEROES) grid.appendChild(heroCard(hero, hero === next));
-    heroes.append(grid);
+    // 히어로 도감: 출신(작품)별로 묶고, 묶음 안에서는 합류 순서대로 (사용자 요청 2026-10-24)
+    for (const origin of A.HERO_ORIGINS) {
+      const members = A.HEROES.filter((h) => h.origin === origin.id);
+      if (!members.length) continue;
+      const head = document.createElement('div');
+      head.className = 'family-head';
+      head.innerHTML = '<strong></strong><span class="family-count"></span>';
+      head.querySelector('strong').textContent = `${origin.icon} ${origin.name}`;
+      head.querySelector('.family-count').textContent = `${members.filter(earnedUnlock).length} / ${members.length}`;
+      const grid = document.createElement('div');
+      grid.className = 'hero-grid';
+      for (const hero of members) grid.appendChild(heroCard(hero, hero === next));
+      heroes.append(head, grid);
+    }
 
     renderOptions();
   }

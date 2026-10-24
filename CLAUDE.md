@@ -8,7 +8,9 @@
 * **무엇:** "히어로 대작전" — 아이 한 명을 위한 수학 · 영어 학습 액션 웹게임. **1~12단계 = 초1 ~ 중3** (단계 버튼에 "추천 학년" 표시, [ADR-0007](doc/decisions/ADR-0007-levels-elementary-to-middle.md))
 * **테마:** 스파이더맨 · 어벤저스 느낌의 **히어로 연합 8팀 × 6명 = 48명**, 팀 스타로 한 명씩 합류. 원조를 떠올리게 하는 오마주 디자인이되 **공식 이름 · 로고 · 공식 이미지 파일은 절대 쓰지 않는다** ([ADR-0002](doc/decisions/ADR-0002-original-characters.md))
 * **스택 ([ADR-0008](doc/decisions/ADR-0008-vite-content-pipeline.md)):** Vite 6 빌드 + Phaser 3.80.1(2D) + Three.js 0.149(3D) — npm, 버전 고정. 콘텐츠 원본은 **SQLite DB** `content/arah-content.db` → 빌드 때 JSON. 발음은 `npm run audio`(GitHub Actions 자동), 히어로 그림은 스프라이트 아틀라스(`npm run sprites`, 디자이너 그림으로 교체 가능)
-* **히어로 (2026-10-17):** 마블 · DC 영화 히어로 + 산리오 + 치이카와, **공식 이름 (가족 내부용, 사용자 결정)**. 2D 2등신 그림(`game/hero-art.js`, 데이터 `look` 으로 그림), 목록 순서대로 한 명씩 합류 — 목록 끝에 한 줄 추가하면 늘어난다. 3D 사람형 히어로는 보류(`USE_HERO_3D = false`)
+* **캐릭터 (2026-10-24, 81명):** 오리지널 8 · 마블 37 · DC 11 · 원피스 13 · 산리오 9 · 치이카와 3. 공식 이름 캐릭터는 **가족 내부용 (사용자 결정)**, 오리지널은 기존 작품을 참고하지 않은 새 캐릭터. 2D 그림(`game/hero-art.js`: 작품별 그림체 — 히어로 `drawFilm` · 원피스 `opHead` · 산리오 `drawMascot` · 치이카와 `drawChiikawa` · 오리지널 `drawOriginal`, 캐릭터별 세부 `CHARACTER_DETAILS`). 목록 순서대로 한 명씩 합류, 도감은 출신별 묶음(`A.HERO_ORIGINS`). 테스트 단계라 전체 선택 가능(`TEST_PHASE`). 3D 사람형 히어로는 보류(`USE_HERO_3D = false`)
+* **원작 느낌 최우선:** 캐릭터 특징은 검색 · 사용자 참고 그림으로 확인한 것만 그린다. 기존 캐릭터는 삭제하지 않는다
+* **액션 연출 (`game/signatures.js`):** 예비 동작 · 히트스톱 · 집중선 · 작품별 효과 글자 · 캐릭터 필살기 ([game-design 9.3](doc/planning/game-design.md))
 * **배포:** GitHub `csh1645/ARAH` `main` → Vercel 자동 배포. **Root Directory = `web` 그대로**, 빌드 · 보안 헤더는 `web/vercel.json` (`cd .. && npm run build` → `web/dist`, CSP · nosniff · frame 금지) ([deploy-vercel.md](doc/guides/deploy-vercel.md))
 * **사용자 선호:** 한국어 응답, 결론 먼저. 문서는 `doc/` 아래 Markdown으로 관리, 개발 표준 · 주석을 중시, **변경 후 에이전트가 직접 브라우저로 끝까지 플레이 테스트하고 결과를 보고**하길 원함
 

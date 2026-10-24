@@ -92,6 +92,12 @@
   const MELEE_GO_MS = 340; // 근접 공격: 목표까지 뛰어가는 시간 (히어로 속도 능력으로 나눈다)
   const MELEE_BACK_MS = 300; // 근접 공격: 돌아오는 시간
   const MELEE_DEFAULT_ARC = 120;
+
+  // ----- 액션 연출 (애니메이션 느낌, game/signatures.js) -----
+  const HITSTOP_MS = 70; // 맞는 순간 잠깐 멈춤 (실제 시간 ms)
+  const HITSTOP_SCALE = 0.08; // 멈춤 동안 트윈 속도 배율
+  const FX_WORD_GAP_MS = 380; // 효과 글자가 너무 자주 겹치지 않게
+  const SPECIAL_WORD_CHANCE = 0.55; // 필살기 이름을 외칠 확률 (나머지는 짧은 효과 글자)
   /** 히어로 스프라이트 아틀라스 텍스처 키 (프레임 이름 = 자세 이름, tools/sprites/build.mjs) */
   const HERO_ATLAS = 'hero-atlas';
 
@@ -134,6 +140,10 @@
       this.shotColor = family.color;
       /** @type {AttackStyle} 팀별 공격 모양 (거미줄 · 빔 · 방패 · 번개 · 바위 · 화살 · 구슬 · 발톱, game/attacks.js) */
       this.attackStyle = A.attackOf(this.hero);
+      /** 캐릭터별 필살기 연출 · 작품별 느낌 (game/signatures.js) */
+      this.signature = A.signatureOf ? A.signatureOf(this.hero) : null;
+      this.franchise = A.franchiseOf ? A.franchiseOf(this.hero) : 'comic';
+      this.lastFxWord = 0;
     }
 
     create() {
@@ -441,6 +451,82 @@
     /** 공격이 맞은 자리의 팀별 연출 (빔 섬광 · 바위 흔들림 · 발톱 자국 …) */
     attackHit(x, y) {
       this.attackStyle.hit(this, x, y);
+      this.impactFx(x, y);
+    }
+
+    /**
+     * 맞는 순간의 액션 연출 (모든 놀이 공통): 히트스톱(잠깐 멈춤) · 속도선 · 효과 글자 · 캐릭터 필살기.
+     * 효과 글자 모양은 작품마다 다르다 (마블·DC = 미국 만화 글자, 원피스 = 굵은 만화 글자, 산리오 · 치이카와 = 귀여운 글자).
+     * @param {number} x
+     * @param {number} y
+     */
+    impactFx(x, y) {
+      if (!this.signature || !this.sys.isActive() || !this.sys.game.renderer) return; // 끝난 장면에는 그리지 않는다
+      const from = this.player && this.player.active ? this.hand() : { x: W / 2, y: H - 120 };
+      this.hitStop();
+      this.speedLines(x, y, 18, 70);
+      this.signature.hit(this, x, y, from, this.hero.look);
+      if (this.time.now - this.lastFxWord < FX_WORD_GAP_MS) return;
+      this.lastFxWord = this.time.now;
+      const sig = this.signature;
+      const word = sig.word && Math.random() < SPECIAL_WORD_CHANCE ? sig.word : A.util.pick(sig.words);
+      this.fxWord(x, y - 50, word);
+    }
+
+    /** 히트스톱: 맞는 순간 아주 잠깐 움직임을 늦춰 "탁!" 하는 타격감을 준다 (애니메이션 기법) */
+    hitStop() {
+      this.tweens.timeScale = HITSTOP_SCALE;
+      setTimeout(() => { if (this.sys && this.sys.isActive()) this.tweens.timeScale = 1; }, HITSTOP_MS);
+    }
+
+    /**
+     * 집중선 · 속도선: 한 점을 중심으로 바깥에서 안쪽으로 짧은 선들을 그었다 지운다 (만화 효과)
+     * @param {number} x
+     * @param {number} y
+     * @param {number} n 선 개수
+     * @param {number} r 안쪽 빈 반지름
+     */
+    speedLines(x, y, n, r) {
+      const g = this.add.graphics().setDepth(DEPTH.popup);
+      const lines = [];
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + A.util.rand(-0.12, 0.12);
+        lines.push([a, r + A.util.rand(0, 20), r + A.util.rand(55, 95)]);
+      }
+      const color = this.franchise === 'sanrio' ? 0xff9ec7 : this.franchise === 'chiikawa' ? 0x9e9e9e : 0xffffff;
+      const o = { t: 0 };
+      const draw = () => {
+        g.clear();
+        g.lineStyle(this.franchise === 'onepiece' ? 4 : 3, color, 1 - o.t);
+        for (const [a, r0, r1] of lines) {
+          const s = r0 + (r1 - r0) * o.t * 0.4;
+          g.lineBetween(x + Math.cos(a) * s, y + Math.sin(a) * s, x + Math.cos(a) * r1, y + Math.sin(a) * r1);
+        }
+      };
+      draw();
+      this.tweens.add({ targets: o, t: 1, duration: 260, onUpdate: draw, onComplete: () => g.destroy() });
+    }
+
+    /**
+     * 효과 글자 (POW! · 쾅!! · 뿅!) — 작품별 글꼴 · 색 · 기울기로 튀어나왔다 사라진다.
+     * @param {number} x
+     * @param {number} y
+     * @param {string} word
+     */
+    fxWord(x, y, word) {
+      const fx = A.franchiseFx(this.hero);
+      const t = this.add.text(Phaser.Math.Clamp(x, 120, W - 120), Math.max(GAME.HUD_H + 40, y), word, {
+        fontFamily: fx.font, fontSize: `${fx.size}px`, color: fx.fill, stroke: fx.stroke, strokeThickness: fx.strokeW,
+      }).setOrigin(0.5).setDepth(DEPTH.popup + 1).setAngle(fx.angle + A.util.rand(-6, 6)).setScale(0.2);
+      this.tweens.chain({
+        targets: t,
+        tweens: [
+          { scale: 1.25, duration: 120, ease: 'Back.Out' },
+          { scale: 1, duration: 90 },
+          { y: t.y - 24, alpha: 0, duration: 420, delay: 260, ease: 'Quad.In' },
+        ],
+        onComplete: () => t.destroy(),
+      });
     }
 
     /**
@@ -703,19 +789,44 @@
     /** 제자리에서 둥실둥실 (서 있는 모드 공통). 근접 공격 · 끝 연출 때 멈췄다가 다시 시작한다. */
     startHeroBob(amp = 4) {
       this.stopHeroBob();
-      this.bobTween = this.tweens.add({ targets: this.player, y: this.player.y - amp, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      const p = this.player;
+      const k = this.heroScale;
+      if (this.franchise === 'sanrio') { // 통통 튀는 마스코트: 찌그러졌다 늘어나며 깡충
+        this.bobTween = this.tweens.add({ targets: p, y: p.y - amp * 2, scaleY: k * 1.05, scaleX: k * 0.96, duration: 420, yoyo: true, repeat: -1, ease: 'Quad.Out' });
+      } else if (this.franchise === 'chiikawa') { // 꼼지락: 좌우로 살짝 흔들흔들
+        this.bobTween = this.tweens.add({ targets: p, angle: { from: -5, to: 5 }, y: p.y - amp, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      } else if (this.franchise === 'onepiece') { // 힘이 넘치는 대기: 크게 숨쉬며 들썩
+        this.bobTween = this.tweens.add({ targets: p, y: p.y - amp * 1.4, scaleY: k * 1.03, duration: 560, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      } else {
+        this.bobTween = this.tweens.add({ targets: p, y: p.y - amp, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+      }
     }
 
     stopHeroBob() {
       if (this.bobTween) this.bobTween.stop();
       this.bobTween = null;
+      if (this.player && this.player.active && !this.inMelee) this.player.setAngle(0).setScale(this.heroScale);
     }
 
     /** 투사체 발사 동작: 팔을 쭉 뻗는 공격 자세 + 반동 + 팀 발사음. 투사체 이동은 모드가 맡는다. */
     heroShoot() {
       const k = this.heroScale;
+      const p = this.player;
+      const dir = p.flipX ? -1 : 1;
       this.setHeroPose('attack');
-      this.tweens.add({ targets: this.player, scaleX: k * 1.08, scaleY: k * 0.9, duration: 60, yoyo: true, onComplete: () => this.player.setScale(k) });
+      // 애니메이션 기법: 움츠림(예비 동작) → 쭉 늘어나며 튀어나감 → 살짝 흔들리며 원래대로(여운)
+      if (this.shootTween) this.shootTween.stop();
+      p.setScale(k);
+      this.shootTween = this.tweens.chain({
+        targets: p,
+        tweens: [
+          { scaleX: k * 0.9, scaleY: k * 1.1, duration: 45, ease: 'Quad.Out' },
+          { scaleX: k * 1.14, scaleY: k * 0.88, angle: dir * -6, duration: 70, ease: 'Quad.Out' },
+          { scaleX: k, scaleY: k, angle: 0, duration: 160, ease: 'Back.Out' },
+        ],
+      });
+      const h = this.hand();
+      this.speedLines(h.x, h.y, 10, 18);
       this.shotSfx();
     }
 
