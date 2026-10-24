@@ -151,7 +151,7 @@
     h('hulk', 'giant', '헐크', '어벤져스', '줄이 넓게 퍼지고, 생각할 시간이 2초 더', { hitRadius: 26, timeBonus: 2 },
       { style: 'giant', suit: '#4caf50', accent: '#6a1b9a', line: '#1b5e20', emblem: '#1b5e20', pattern: 'skin', mark: 'none', head: 'tint', hair: '#1a1a1a', hairStyle: 'buzzed', bulk: 1.3 }),
     h('luffy', 'giant', '루피', '원피스', '넓은 판정 + 생각할 시간 2초 더', { hitRadius: 26, timeBonus: 2 },
-      { op: 'luffy', anime: 1, mouth: 'grin', style: 'giant', suit: '#d62828', accent: '#1d4ed8', line: '#f2c94c', emblem: '#f2c94c', pattern: 'vest', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'spiky', hat: 'straw', faceMarks: ['scar'], skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#c9a227', belt: '#f2c94c' }),
+      { op: 'luffy', anime: 1, mouth: 'grin', style: 'giant', suit: '#d62828', accent: '#1d4ed8', line: '#f2c94c', emblem: '#f2c94c', pattern: 'vest', mark: 'none', head: 'face', hair: '#111111', hairStyle: 'spiky', hat: 'straw', skin: '#f3c99a', arms: '#f3c99a', glove: '#f3c99a', legs: '#1d4ed8', boot: '#c9a227', belt: '#f2c94c' }),
     // ---- 9~16번째 합류 ----
     h('hawkeye', 'archer', '호크아이', '어벤져스 · 호크아이', '콤보 점수 1.4배, 줄도 조금 빨라요', { comboBonus: 1.4, webSpeed: 1.3 },
       { style: 'archer', suit: '#3b1f5c', accent: '#1a1a1a', line: '#7b4fb0', emblem: '#ce93d8', pattern: 'tactical', mark: 'none', head: 'face', hair: '#5d4037', hairStyle: 'buzzed', gear: ['bow', 'quiver'] }),
@@ -202,7 +202,7 @@
     h('captain-marvel', 'thunder', '캡틴 마블', '캡틴 마블', '아주 빠르고, 하트도 하나 더', { webSpeed: 1.8, cooldown: 150, hearts: 4 },
       { style: 'thunder', suit: '#1d4ed8', accent: '#c62828', line: '#f2c14e', emblem: '#f2c14e', pattern: 'sides', mark: 'star', head: 'face', body: 'f', hair: '#e8c66a', hairStyle: 'long', glove: '#1d4ed8', boot: '#c62828' }),
     h('sanji', 'panther', '상디', '원피스', '아주 빠르고, 하트 +1', { webSpeed: 1.8, cooldown: 170, hearts: 4 },
-      { op: 'sanji', anime: 1, mouth: 'smirk', style: 'panther', suit: '#1a1a1a', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f4d35e', pattern: 'suitTie', mark: 'none', head: 'face', hair: '#f4d35e', hairStyle: 'sideSweep', faceMarks: ['curlyBrow'], skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a' }),
+      { op: 'sanji', anime: 1, mouth: 'smirk', style: 'panther', suit: '#1a1a1a', accent: '#1d4ed8', line: '#f5f5f5', emblem: '#f4d35e', pattern: 'suitTie', mark: 'none', head: 'face', hair: '#f4d35e', hairStyle: 'sideSweep', skin: '#f3c99a', glove: '#f3c99a', legs: '#1a1a1a', boot: '#1a1a1a' }),
     // ---- 33~40번째 합류 ----
     h('groot', 'giant', '그루트', '가디언즈 오브 갤럭시', '넓은 판정 + 시간 + 천천히', { hitRadius: 26, timeBonus: 2, slow: 0.8 },
       { style: 'giant', suit: '#7b5a3c', accent: '#5d4037', line: '#3e2a1a', emblem: '#7cb342', pattern: 'bark', mark: 'none', head: 'tint', bulk: 1.15 }),
@@ -217,7 +217,7 @@
     h('catwoman', 'panther', '캣우먼', '더 배트맨', '빠르고, 하트 +1, 시간 +1초', { webSpeed: 1.5, hearts: 4, timeBonus: 1 },
       { style: 'panther', suit: '#111111', accent: '#1c1c1c', line: '#3a3a3a', emblem: '#3a3a3a', pattern: 'plain', mark: 'none', head: 'cowl', catEars: 1, body: 'f', gear: ['claws'] }),
     h('chopper', 'mystic', '쵸파', '원피스', '마법 같은 의술로 하트 +1, 천천히', { slow: 0.75, timeBonus: 1, hearts: 4 },
-      { style: 'classic', mascot: 'chopper', suit: '#a0522d', accent: '#ff7aa2', line: '#ffffff', emblem: '#ff7aa2', body3: '#a0522d', legs: '#1d4ed8', boot: '#5d4037', hands: '#a0522d' }),
+      { style: 'classic', mascot: 'chopper', suit: '#a0522d', accent: '#ff7aa2', line: '#ffffff', emblem: '#ff7aa2', body3: '#a0522d', pants: '#7b1f2a', boot: '#5d4037', hands: '#a0522d' }),
     h('hangyodon', 'shield', '한교동', '산리오', '하트 +1, 생각할 시간 +1초', { hearts: 4, timeBonus: 1 },
       { style: 'classic', mascot: 'hangyodon', suit: '#5fbfb8', accent: '#e53950', line: '#2e7d6e', emblem: '#e53950', body3: '#5fbfb8', boot: '#5fbfb8', hands: '#5fbfb8' }),
     // ---- 41~48번째 합류 ----

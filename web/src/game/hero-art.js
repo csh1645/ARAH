@@ -765,13 +765,21 @@
     if (m.has('scar')) line(ctx, '#8b3a2a', 0.9, [[25, 24], [26.5, 25.5], [28, 24.5]]); // 루피: 왼쪽 눈 밑 흉터
     if (m.has('scars3')) for (const dx of [-1.6, 0, 1.6]) line(ctx, '#8b3a2a', 0.8, [[37 + dx, 16], [38.5 + dx, 25]]); // 샹크스: 눈 위 세 줄
     if (m.has('freckles')) for (const [x, y] of [[23, 24], [25, 25], [24, 26.5], [39, 24], [41, 25], [40, 26.5]]) circle(ctx, x, y, 0.55, '#8d5524');
-    if (m.has('longNose')) { // 우솝: 긴 코
-      ctx.fillStyle = look.skin || SKIN;
-      const ny = look.op ? 24.6 : 22; // 원피스 얼굴은 눈이 아래라 코도 아래로
-      roundRect(ctx, 31, ny, 17, 3.6, 1.8);
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(31, ny, 17, 3.6);
+    if (m.has('longNose')) { // 우솝: 긴 코 (얼굴 밖까지 길게, 잉크 선 + 아래 그림자로 얼굴과 구분)
+      const ny = look.op ? 24.4 : 22; // 원피스 얼굴은 눈이 아래라 코도 아래로
+      const skin = look.skin || SKIN;
+      ctx.fillStyle = skin;
+      roundRect(ctx, 31, ny, 21, 3.8, 1.9);
+      ctx.fillStyle = shade(skin, -0.18);
+      ctx.fillRect(33, ny + 2.4, 17.5, 1.2);
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(33, ny);
+      ctx.lineTo(50.1, ny);
+      ctx.arc(50.1, ny + 1.9, 1.9, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(33, ny + 3.8);
+      ctx.stroke();
     }
     if (m.has('curlyBrow')) { // 상디: 꼬인 눈썹 (보이는 쪽)
       ctx.strokeStyle = look.hair || '#f4d35e';
@@ -855,6 +863,142 @@
     ctx.restore();
   }
 
+
+
+  // ---------- 캐릭터별 세부 그림 (한 명씩 원작에 맞춰 다듬는 자리) ----------
+  // body(ctx, look, P): 몸을 다 그린 뒤 · 머리보다 먼저 (옷 단추 · 흉터 · 반바지 · 신발 등)
+  // face(ctx, look): 얼굴을 다 그린 뒤 (얼굴 흉터 · 표정 세부). 원작 특징은 검색 · 참고 그림으로 확인한 것만 넣는다.
+
+  /** 다리 한 쌍 위에 덧그리기 (legPair 와 같은 자세 변환) */
+  function onLegs(ctx, P, hips, m, draw) {
+    hips.forEach((hx, i) => {
+      ctx.save();
+      ctx.translate(hx, m.y);
+      ctx.rotate(P.legs[i]);
+      ctx.scale(1, P.tuck || 1);
+      draw(m);
+      ctx.restore();
+    });
+  }
+
+  /** 위팔 가운데 위치 (어깨 → 손 사이 40%) */
+  const upperArm = (s, h) => [s[0] + (h[0] - s[0]) * 0.4, s[1] + (h[1] - s[1]) * 0.4];
+
+  const CHARACTER_DETAILS = {
+    /** 조로 (확인: 왼쪽 귀 금귀걸이 3개, 왼쪽 위팔의 검은 두건, 왼쪽 눈 흉터) */
+    zoro: {
+      body(ctx, look, P) {
+        const [x, y] = upperArm(SHOULDER.r, P.hand); // 캐릭터 왼팔 = 보는 쪽 오른쪽
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.atan2(P.hand[1] - SHOULDER.r[1], P.hand[0] - SHOULDER.r[0]) + Math.PI / 2);
+        ctx.fillStyle = '#1a1a1a';
+        roundRect(ctx, -4.2, -1.6, 8.4, 3.2, 1.2);
+        poly(ctx, '#1a1a1a', [[3.5, -1], [6.5, 1.8], [4, 2.2]]);
+        ctx.restore();
+      },
+      face(ctx) {
+        ctx.strokeStyle = '#f2c94c'; // 왼쪽 귀(보는 쪽 오른쪽) 금귀걸이 3개
+        ctx.lineWidth = 0.7;
+        for (const y of [23.6, 25.6, 27.6]) {
+          ctx.beginPath();
+          ctx.arc(47.2, y, 0.9, 0, TAU);
+          ctx.stroke();
+        }
+      },
+    },
+    /** 나미 (확인: 왼쪽 어깨의 풍차 · 귤 문신, 애니에서는 파란색) */
+    nami: {
+      body(ctx) {
+        const x = 43.5, y = 37.5; // 캐릭터 왼쪽 어깨 = 보는 쪽 오른쪽
+        ctx.strokeStyle = '#2b6cb0';
+        ctx.lineWidth = 0.6;
+        for (let i = 0; i < 4; i++) { // 풍차 날개
+          const a = (i * Math.PI) / 2 + 0.4;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(x + Math.cos(a) * 2.6, y + Math.sin(a) * 2.6, x + Math.cos(a + 0.8) * 2.2, y + Math.sin(a + 0.8) * 2.2);
+          ctx.stroke();
+        }
+        circle(ctx, x + 2.6, y + 2.2, 1, '#2b6cb0'); // 귤
+      },
+    },
+    /** 우솝 (확인: 셔츠 없는 갈색 멜빵바지, 흰 허리띠, 올리브색 두건, 저격용 고글) */
+    usopp: {
+      body(ctx, look) {
+        const skin = look.skin || SKIN;
+        poly(ctx, skin, [[20, 33.5], [44, 33.5], [41, 40], [23, 40]]); // 맨가슴 (멜빵 위)
+        ctx.fillStyle = look.suit;
+        ctx.fillRect(23, 33.5, 3, 7);
+        ctx.fillRect(38, 33.5, 3, 7);
+        ctx.fillStyle = '#f5f5f5'; // 흰 허리띠
+        roundRect(ctx, 19, 48, 26, 4, 2);
+      },
+      face(ctx, look) {
+        ctx.fillStyle = '#7a7a3a'; // 올리브색 두건 (곱슬머리 위)
+        ctx.beginPath();
+        ctx.arc(32, 15, 13.5, Math.PI * 1.08, Math.PI * 1.92);
+        ctx.quadraticCurveTo(32, 9.5, 20.3, 11);
+        ctx.fill();
+        for (const [x, y] of [[26, 7], [32, 5.5], [38, 7]]) poly(ctx, '#c9a227', [[x, y - 1.2], [x + 1.2, y], [x, y + 1.2], [x - 1.2, y]]); // 다이아몬드 무늬
+        for (const x of [27, 37]) { // 이마 위 저격용 고글
+          circle(ctx, x, 11.5, 3, '#5d4037');
+          circle(ctx, x, 11.5, 2.1, '#f2a33a');
+          circle(ctx, x - 0.7, 10.8, 0.6, '#ffffff');
+        }
+        line(ctx, '#5d4037', 1, [[30, 11.5], [34, 11.5]]);
+      },
+    },
+    /** 상디 (확인: 타임스킵 뒤 오른쪽 눈을 가리는 앞머리, 말린 눈썹, 염소수염, 검은 정장) */
+    sanji: {
+      face(ctx, look) {
+        ctx.strokeStyle = look.hair || '#f4d35e'; // 보이는 눈(보는 쪽 오른쪽)의 말린 눈썹
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(34.5, 17.8);
+        ctx.lineTo(39.5, 17.2);
+        ctx.arc(39.6, 15.9, 1.3, Math.PI * 0.5, Math.PI * 2.2, true);
+        ctx.stroke();
+        ctx.fillStyle = shade(look.hair || '#f4d35e', -0.25); // 염소수염
+        roundRect(ctx, 30.5, 33, 3, 2.6, 1.2);
+      },
+    },
+    /**
+     * 루피 (확인: 왼쪽 눈 아래 두 바늘 흉터, 가슴 X자 흉터, 민소매 빨간 조끼, 해진 파란 반바지, 노란 허리띠, 샌들)
+     */
+    luffy: {
+      body(ctx, look, P) {
+        const skin = look.skin || SKIN;
+        // 가슴 X자 흉터 (열린 조끼 사이)
+        line(ctx, '#c9876a', 1.1, [[29.5, 36.5], [34.5, 42.5]]);
+        line(ctx, '#c9876a', 1.1, [[34.5, 36.5], [29.5, 42.5]]);
+        // 조끼 단추 (양쪽 앞섶)
+        for (const y of [37, 41, 45]) {
+          circle(ctx, 27.2, y, 0.9, '#f2c94c');
+          circle(ctx, 36.8, y, 0.9, '#f2c94c');
+        }
+        // 반바지: 무릎 위까지, 끝단을 걷어 올린 밝은 띠 + 해진 끝 / 아래는 맨다리 + 샌들
+        onLegs(ctx, P, [26, 38], LEGS, (m) => {
+          ctx.fillStyle = skin;
+          roundRect(ctx, -m.w / 2 + 0.5, m.len * 0.55, m.w - 1, m.len * 0.5, 2);
+          ctx.fillStyle = '#5b8fd9';
+          ctx.fillRect(-m.w / 2, m.len * 0.42, m.w, 2.2);
+          poly(ctx, '#5b8fd9', [[-m.w / 2, m.len * 0.42 + 2.2], [-m.w / 4, m.len * 0.42 + 3.6], [0, m.len * 0.42 + 2.2], [m.w / 4, m.len * 0.42 + 3.4], [m.w / 2, m.len * 0.42 + 2.2]]);
+          ctx.fillStyle = skin; // 맨발
+          roundRect(ctx, -m.bootW / 2, m.len - 4, m.bootW, m.bootH, 3);
+          ctx.fillStyle = '#8d6e3f'; // 샌들 바닥 · 끈
+          ctx.fillRect(-m.bootW / 2, m.len + m.bootH - 5.6, m.bootW, 1.6);
+          line(ctx, '#8d6e3f', 1, [[-m.bootW / 2 + 1.5, m.len - 1], [m.bootW / 2 - 1.5, m.len - 1]]);
+        });
+      },
+      face(ctx) {
+        // 왼쪽 눈(보는 쪽 오른쪽) 아래 흉터 + 두 바늘 자국
+        line(ctx, '#8b3a2a', 0.8, [[36.5, 26.9], [38.6, 27.3], [41, 26.5]]); // 광대뼈 위, 입보다 위쪽
+        line(ctx, '#8b3a2a', 0.6, [[38, 26.3], [37.8, 27.9]]);
+        line(ctx, '#8b3a2a', 0.6, [[39.8, 26.1], [40, 27.7]]);
+      },
+    },
+  };
 
   // ---------- 원피스 (캐릭터별 얼굴 · 눈 · 머리카락) ----------
   // 원작(오다 에이치로) 치비 그림 특징: 볼 · 턱선이 있는 얼굴 + 귀, 캐릭터마다 다른 눈매(둥근 · 날카로운 · 차분한),
@@ -967,6 +1111,12 @@
     const iris = look.eye || '#3a2414';
     for (const [x, side] of [[26.5, -1], [37.5, 1]]) {
       if (cfg.hideLeft && side === -1) continue; // 앞머리로 가린 눈 (상디)
+      if (side === 1 && (look.faceMarks || []).includes('eyeScar')) { // 조로: 왼쪽 눈(보는 쪽 오른쪽)을 감은 흉터
+        line(ctx, '#111111', 1.3, [[x - 3, 22.4], [x + 3, 22.4]]);
+        line(ctx, '#8b3a2a', 1, [[x + 0.4, 15.8], [x - 0.3, 28]]);
+        line(ctx, '#111111', 1.5, [[x + 3.8, 16.4], [x - 3.4, 18.2]]);
+        continue;
+      }
       const outer = x + side * 3.6, inner = x - side * 3.4;
       if (cfg.eye === 'none') continue;
       if (cfg.eye === 'round') {
@@ -1372,6 +1522,8 @@
     }
     if (!back) chestMark(ctx, look);
 
+    const detail = CHARACTER_DETAILS[look.op || look.id];
+    if (detail && detail.body && !back) detail.body(ctx, look, P);
     if (look.op === 'shanks') { // 샹크스: 목이 높고 소매 없는 검은 망토 (어깨 위로 솟은 깃)
       poly(ctx, '#1a1a1a', [[14, 40], [18, 30], [24, 26], [26, 34], [20, 46]]);
       poly(ctx, '#1a1a1a', [[50, 40], [46, 30], [40, 26], [38, 34], [44, 46]]);
@@ -1473,6 +1625,7 @@
       const face = head === 'tint' ? (look.skinTint || look.suit) : head === 'android' ? look.line : skin;
       if (look.op && !back) { // 원피스: 캐릭터별 얼굴
         opHead(ctx, look);
+        if (detail && detail.face) detail.face(ctx, look);
         if (look.hat) drawHat(ctx, look);
         ctx.restore();
         if (look.beads) for (let i = 0; i < 9; i++) circle(ctx, 22 + i * 2.5, 35.5 + Math.sin((i / 8) * Math.PI) * 3, 1.3, '#c62828'); // 에이스 구슬 목걸이
