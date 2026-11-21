@@ -1,0 +1,6 @@
+# Godot 편집기 · 가져오기 캐시 (매번 다시 만든다)
+.godot/
+*.import
+# 빌드 산출물 — tools/godot/export-data.mjs 가 웹 판 원본에서 만든다
+data/generated/
+fonts/generated/

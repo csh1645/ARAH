@@ -1,0 +1,52 @@
+; 히어로 대작전 — Godot 판 (ADR-0011). 엔진 버전 고정: Godot 4.7.2-stable
+; 데이터는 tools/godot/export-data.mjs 가 만든 data/generated/*.json 을 읽기만 한다.
+
+config_version=5
+
+[application]
+
+config/name="히어로 대작전"
+config/description="초1~중3 수학 · 영어 학습 액션 게임"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.043, 0.063, 0.149, 1)
+boot_splash/show_image=false
+
+[autoload]
+
+Bridge="*res://scripts/autoload/bridge.gd"
+Store="*res://scripts/autoload/store.gd"
+Data="*res://scripts/autoload/data.gd"
+Review="*res://scripts/autoload/review.gd"
+Fonts="*res://scripts/autoload/fonts.gd"
+Emoji="*res://scripts/autoload/emoji.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+Voice="*res://scripts/autoload/voice.gd"
+Assets="*res://scripts/autoload/assets.gd"
+TestHook="*res://scripts/autoload/test_hook.gd"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=640
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=0
+
+[gui]
+
+common/drop_mouse_on_gui_input_disabled=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.043, 0.063, 0.149, 1)
+2d/snap/snap_2d_transforms_to_pixel=false

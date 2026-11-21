@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!--
+  히어로 대작전 Godot 판 웹 껍데기 (Godot 웹 내보내기의 Custom HTML Shell).
+  사이트 보안 정책(CSP)을 지키기 위해 페이지 안에 실행 스크립트를 넣지 않는다:
+  Godot 설정은 실행되지 않는 JSON 블록으로 두고, 시작은 boot.js 가 한다.
+  로컬 확인 때도 운영과 같은 정책이 걸리도록 CSP 를 meta 로도 적는다 (운영은 web/vercel.json 헤더).
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>히어로 대작전</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0b1026; overflow: hidden; touch-action: none; }
+  #canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 18px; color: #fff; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; background: radial-gradient(circle at 50% 40%, #41206b, #0b1026 70%); }
+  #boot h1 { margin: 0; font-size: 34px; letter-spacing: 2px; text-shadow: 0 4px 0 #000; color: #ffd166; }
+  #boot .bar { width: min(70vw, 360px); height: 14px; border-radius: 7px; background: rgba(255,255,255,.15); overflow: hidden; }
+  #boot .fill { height: 100%; width: 0; background: linear-gradient(90deg, #ff4fa3, #ffd166); transition: width .2s; }
+  #boot p { margin: 0; font-size: 15px; opacity: .8; }
+  #boot.hidden { display: none; }
+</style>
+$GODOT_HEAD_INCLUDE
+</head>
+<body>
+<canvas id="canvas" tabindex="0">브라우저가 HTML5 캔버스를 지원하지 않아요.</canvas>
+<div id="boot">
+  <h1>🦸 히어로 대작전</h1>
+  <div class="bar"><div class="fill" id="bootFill"></div></div>
+  <p id="bootMsg">히어로들이 모이는 중…</p>
+</div>
+<script type="application/json" id="godot-config">$GODOT_CONFIG</script>
+<script src="arah-bridge.js"></script>
+<script src="$GODOT_URL"></script>
+<script src="boot.js"></script>
+</body>
+</html>

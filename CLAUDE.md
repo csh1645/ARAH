@@ -12,6 +12,9 @@
 * **원작 느낌 최우선:** 캐릭터 특징은 검색 · 사용자 참고 그림으로 확인한 것만 그린다. 기존 캐릭터는 삭제하지 않는다
 * **액션 연출 (`game/signatures.js`):** 예비 동작 · 히트스톱 · 집중선 · 작품별 효과 글자 · 캐릭터 필살기 ([game-design 9.3](doc/planning/game-design.md))
 * **배포:** GitHub `csh1645/ARAH` `main` → Vercel 자동 배포. **Root Directory = `web` 그대로**, 빌드 · 보안 헤더는 `web/vercel.json` (`cd .. && npm run build` → `web/dist`, CSP · nosniff · frame 금지) ([deploy-vercel.md](doc/guides/deploy-vercel.md))
+* **Godot 전환 진행 중 ([ADR-0011](doc/decisions/ADR-0011-godot-engine.md), 2026-11-21~, 브랜치 `feature/godot`):** Godot 4.7.2 · GDScript · 스레드 없는 웹 내보내기. 이전 판은 태그 `v1.0-web-phaser`.
+  `godot/` 프로젝트, `npm run godot:build` → `web/public/play/` (로컬 확인 `/play/index.html`). 데이터 · 문제는 웹 판 원본에서 내보낸다 (GDScript 에 다시 적지 않음).
+  운영은 사용자 확인 전까지 Phaser 판 그대로. 구조 · 테스트 방법: [godot-migration-plan.md](doc/planning/godot-migration-plan.md)
 * **사용자 선호:** 한국어 응답, 결론 먼저. 문서는 `doc/` 아래 Markdown으로 관리, 개발 표준 · 주석을 중시, **변경 후 에이전트가 직접 브라우저로 끝까지 플레이 테스트하고 결과를 보고**하길 원함
 
 ## 2. 현재 상태 (2026-10-10 기준)

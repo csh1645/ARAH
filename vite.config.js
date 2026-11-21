@@ -23,5 +23,6 @@ export default defineConfig({
       },
     },
   },
-  server: { port: 5173, open: false },
+  // Godot 판 웹 빌드(web/public/play)는 빌드 중 임시 파일을 만든다 → 감시하지 않는다 (감시 중 EBUSY 로 서버가 멈췄음)
+  server: { port: 5173, open: false, watch: { ignored: ['**/public/play/**'] } },
 });
