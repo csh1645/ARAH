@@ -45,6 +45,7 @@ func _ready() -> void:
 	title.pivot_offset = Vector2(300, 25)
 	title.scale = Vector2(0.4, 0.4)
 	title.create_tween().tween_property(title, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	v.add_child(_star_rating())
 
 	var nxt := progress.next_hero()
 	var stats := [
@@ -101,10 +102,10 @@ func _ready() -> void:
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 16)
-	var again := Kit.button("🔁 다시 하기", 26, "big", func() -> void: retry.emit())
+	var again := Kit.button("🔁 다시 하기", 26, "go", func() -> void: retry.emit())
 	again.name = "RetryButton"
 	again.custom_minimum_size = Vector2(220, 60)
-	var home := Kit.button("🏠 메뉴로", 24, "chip", func() -> void: menu.emit())
+	var home := Kit.button("🏠 메뉴로", 24, "tile", func() -> void: menu.emit())
 	home.name = "MenuButton"
 	home.custom_minimum_size = Vector2(170, 60)
 	buttons.add_child(again)
@@ -113,6 +114,33 @@ func _ready() -> void:
 
 	_join_queue = fresh.duplicate()
 	_show_next_join()
+
+
+## 별 3개 평가 (한 번에 맞힌 비율): 90% 이상 ★3 · 60% 이상 ★2 · 끝까지 했으면 ★1. 하나씩 "쾅" 튀어나온다
+func _star_rating() -> Control:
+	var total := maxi(1, int(r.total))
+	var ratio := float(r.firstTry) / total
+	var n := 3 if ratio >= 0.9 else (2 if ratio >= 0.6 else (1 if int(r.heartsLeft) > 0 or ratio >= 0.3 else 0))
+	var row := HBoxContainer.new()
+	row.name = "Stars"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	row.set_meta("count", n)
+	for i in 3:
+		var s := UiText.make("⭐", 52 if i == 1 else 42, Color.WHITE, 0.5)
+		s.custom_minimum_size = Vector2(70, 64)
+		s.modulate = Color(0.25, 0.25, 0.4, 0.8)
+		row.add_child(s)
+		if i < n:
+			var tw := s.create_tween()
+			tw.tween_interval(0.45 + i * 0.32)
+			tw.tween_callback(func() -> void:
+				s.modulate = Color.WHITE
+				s.pivot_offset = s.size / 2
+				s.scale = Vector2(2.2, 2.2)
+				Sfx.play("coin"))
+			tw.tween_property(s, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return row
 
 
 # ---------- 새 히어로 합류 축하 ----------

@@ -372,7 +372,8 @@ func finish() -> void:
 	hero_say("win" if hearts > 0 else "lose", true)
 	q_text.text = ""
 	hint_text.text = ""
-	var t := Txt.make(msg, 60, Color("#ffd166"), 8)
+	var t := Txt.make(msg, 64, Color("#ffc93c"), 10, Color("#3a1060"), Vector2(0.5, 0.5), Fonts.title)
+	flare(W / 2, 300, 3.0, Color(1, 0.85, 0.4) if hearts > 0 else Color(0.6, 0.6, 1))
 	t.position = Vector2(W / 2, 300)
 	t.z_index = Z_POPUP
 	t.scale = Vector2(0.3, 0.3)
@@ -519,25 +520,80 @@ func celebrate(pos: Vector2) -> void:
 		Sfx.play("combo")
 
 
-## 불꽃 파티클 (웹 판 burster.explode)
+## 불꽃 파티클 (웹 판 burster.explode). 빛을 더하는 재질의 발광 입자 + 가운데 섬광 — 겹칠수록 밝게 빛난다
 func spark_burst(x: float, y: float, n: int) -> void:
-	var parts := []
-	for i in n:
-		var a := randf() * TAU
-		var sp := randf_range(160, 420)
-		parts.append({"v": Vector2(cos(a), sin(a)) * sp, "c": BURST_COLORS.pick_random()})
-	var origin := Vector2(x, y)
-	Gfx.flash(self, 750, func(g: Gfx, t: float) -> void:
-		var sec := t * 0.75
-		for p in parts:
-			var pos: Vector2 = origin + p.v * sec + Vector2(0, 150 * sec * sec)
-			g.fill_style(p.c, 1.0)
-			g.fill_circle(pos.x, pos.y, 7.2 * (1.0 - t)), Z_POPUP)
+	var p := CPUParticles2D.new()
+	p.texture = _glow_tex()
+	p.material = _add_mat()
+	p.position = Vector2(x, y)
+	p.z_index = Z_POPUP
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.amount = maxi(4, n)
+	p.lifetime = 0.75
+	p.spread = 180
+	p.gravity = Vector2(0, 420)
+	p.initial_velocity_min = 160
+	p.initial_velocity_max = 440
+	p.damping_min = 40
+	p.damping_max = 120
+	p.scale_amount_min = 0.12
+	p.scale_amount_max = 0.32
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 1))
+	sc.add_point(Vector2(1, 0))
+	p.scale_amount_curve = sc
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 1))
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = ramp
+	var cols := Gradient.new() # 알갱이마다 다른 색 (노랑 · 초록 · 하늘 · 분홍 · 흰색)
+	cols.set_color(0, Gfx.col(BURST_COLORS[0]))
+	cols.set_color(1, Gfx.col(BURST_COLORS[4]))
+	for i in range(1, 4):
+		cols.add_point(i / 4.0, Gfx.col(BURST_COLORS[i]))
+	p.color_initial_ramp = cols
+	add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+	flare(x, y, 0.9, Color(1, 0.95, 0.8))
+
+
+var _glow_cache: Texture2D = null
+var _add_cache: CanvasItemMaterial = null
+
+
+func _glow_tex() -> Texture2D:
+	if _glow_cache == null:
+		_glow_cache = Kit.glow_texture(64)
+	return _glow_cache
+
+
+func _add_mat() -> CanvasItemMaterial:
+	if _add_cache == null:
+		_add_cache = Kit.additive()
+	return _add_cache
+
+
+## 섬광: 빛 덩어리가 확 커졌다 사라진다 (맞는 순간 · 정답)
+func flare(x: float, y: float, size: float, color: Color) -> void:
+	var s := Sprite2D.new()
+	s.texture = _glow_tex()
+	s.material = _add_mat()
+	s.position = Vector2(x, y)
+	s.modulate = color
+	s.z_index = Z_FX
+	s.scale = Vector2.ONE * size * 0.6
+	add_child(s)
+	var tw := s.create_tween().set_parallel(true)
+	tw.tween_property(s, "scale", Vector2.ONE * size * 3.2, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(s, "modulate:a", 0.0, 0.28)
+	tw.chain().tween_callback(s.queue_free)
 
 
 func combo_banner(c: int) -> void:
 	var words := {3: "좋아요!", 5: "대단해요!", 7: "최고예요!", 10: "전설의 히어로!"}
-	var t := Txt.make("🔥 %d 콤보! %s" % [c, words.get(c, "")], 48, Color("#ff9f1c"), 8)
+	var t := Txt.make("🔥 %d 콤보! %s" % [c, words.get(c, "")], 50, Color("#ffb627"), 9, Color("#4a1300"), Vector2(0.5, 0.5), Fonts.title)
 	t.position = Vector2(-300, 260)
 	t.z_index = Z_POPUP
 	add_child(t)
@@ -554,7 +610,7 @@ func combo_banner(c: int) -> void:
 
 ## 히어로 잔상 (스윙 · 대시처럼 빠르게 움직일 때)
 func ghost_trail() -> void:
-	if player == null or player.texture == null:
+	if player == null or player.texture == null or hero3d != null: # 3D 히어로는 관절 동작으로 속도감을 낸다
 		return
 	var g := Sprite2D.new()
 	g.texture = player.texture
@@ -577,6 +633,7 @@ func impact_fx(x: float, y: float) -> void:
 	var from := hand() if player != null else Vector2(W / 2, H - 120)
 	hit_stop()
 	speed_lines(x, y, 18, 70)
+	flare(x, y, 1.3, shot_color.lerp(Color.WHITE, 0.4))
 	Signatures.play(self, hero, x, y, from)
 	if now - _last_fx_word < FX_WORD_GAP_MS:
 		return
@@ -771,8 +828,29 @@ func create_hero(x: float, y: float, s: float = 1.0) -> Sprite2D:
 	player.scale = Vector2(s, s)
 	player.z_index = Z_HERO
 	add_child(player)
+	if use_hero_3d():
+		hero3d = Hero3D.create(hero)
+	if hero3d:
+		# 3D 히어로: 2D 자리(크기 · 위치 · 반동 연출)는 그대로 두고, 그 위에 3D 그림을 붙인다
+		add_child(hero3d)
+		var blank := Image.create(int(HERO_SIZE.x), int(HERO_SIZE.y), false, Image.FORMAT_RGBA8)
+		player.texture = ImageTexture.create_from_image(blank)
+		_skin = Sprite2D.new()
+		_skin.texture = hero3d.texture()
+		_skin.scale = Vector2.ONE * HERO_SIZE.x / Hero3D.VIEW.x * Hero3D.SHOW_SCALE
+		_skin.position = Vector2(0, -6)
+		player.add_child(_skin)
 	_tick_hero_anim()
 	return player
+
+
+## 3D 히어로 시험: 히어로 러너에서만, 로비의 "3D 캐릭터 (시험)" 이 켜져 있을 때 (기본 켜짐)
+func use_hero_3d() -> bool:
+	return opts.get("mode", "") == "run" and bool(Store.get_value("hero3d", true))
+
+
+var hero3d: Hero3D = null
+var _skin: Sprite2D = null
 
 
 func _on_hero_loaded(id: String) -> void:
@@ -790,6 +868,10 @@ func _tick_hero_anim() -> void:
 	var a := hero_anim
 	if a.pose != "" and now >= a.until:
 		a.pose = ""
+	if hero3d: # 3D: 자세 이름을 관절 동작으로 (달리기 · 점프 · 공격 · 아야 · 환호)
+		hero3d.play(a.pose if a.pose != "" else a.base)
+		_skin.flip_h = player.flip_h
+		return
 	var pose: String = a.pose
 	if pose == "":
 		var base: String = a.base
@@ -1038,18 +1120,41 @@ func bubble_anchor() -> Vector2:
 
 # ---------- HUD ----------
 
+## HUD: 위쪽 어두운 띠 + 가운데 문제 판(금색 테두리) + 진행 구슬 + 점수 판. 화면 가장자리는 어둡게(비네트).
 func _create_hud() -> void:
+	var vig := Sprite2D.new() # 비네트: 시선을 가운데로 모은다 (넓은 화면도 덮도록 크게)
+	vig.texture = Kit.vignette_texture()
+	vig.position = Vector2(W / 2, H / 2)
+	vig.scale = Vector2(W * 1.5 / 256.0, H * 1.5 / 256.0)
+	vig.z_index = Z_HUD - 1
+	add_child(vig)
 	var bg := Gfx.new()
 	bg.z_index = Z_HUD
-	bg.fill_style(0x000000, 0.45)
-	bg.fill_rect(-W, 0, W * 3, HUD_H)
+	bg.fill_gradient_rect(-W, -H, W * 3, H + HUD_H - 10, 0x05071a, 0x05071a, 0.85)
+	bg.fill_gradient_rect(-W, HUD_H - 10, W * 3, 26, 0x05071a, 0x05071a, 0.0)
+	# 가운데 문제 판
+	var pw := W - TEXT_SIDE_MARGIN * 2 + 40
+	bg.fill_style(0x141a4a, 0.95)
+	bg.fill_rounded_rect(W / 2 - pw / 2, 6, pw, 66, 18)
+	bg.line_style(3, 0xffc93c, 0.9)
+	bg.stroke_rounded_rect(W / 2 - pw / 2, 6, pw, 66, 18)
+	bg.fill_style(0xffffff, 0.07)
+	bg.fill_rounded_rect(W / 2 - pw / 2 + 8, 10, pw - 16, 18, 9)
+	# 점수 판
+	bg.fill_style(0x141a4a, 0.95)
+	bg.fill_rounded_rect(W - 132, 8, 124, 40, 12)
+	bg.line_style(2, 0x4cc9f0, 0.7)
+	bg.stroke_rounded_rect(W - 132, 8, 124, 40, 12)
 	add_child(bg)
-	q_text = _hud_text(Vector2(W / 2, 40), Q_FONT, Color.WHITE, Vector2(0.5, 0.5))
-	hint_text = _hud_text(Vector2(W / 2, 80), HINT_FONT, Color("#ffd166"), Vector2(0.5, 0.5))
-	heart_text = _hud_text(Vector2(18, 12), 26, Color.WHITE, Vector2(0, 0))
-	progress_text = _hud_text(Vector2(18, 56), 20, Color("#cccccc"), Vector2(0, 0))
-	score_text = _hud_text(Vector2(W - 18, 12), 26, Color.WHITE, Vector2(1, 0))
-	combo_text = _hud_text(Vector2(W - 18, 56), 20, Color("#ff9f1c"), Vector2(1, 0))
+	_pips = Gfx.new()
+	_pips.z_index = Z_HUD
+	add_child(_pips)
+	q_text = _hud_text(Vector2(W / 2, 40), Q_FONT, Color.WHITE, Vector2(0.5, 0.5), Fonts.title)
+	hint_text = _hud_text(Vector2(W / 2, 84), HINT_FONT, Color("#ffd166"), Vector2(0.5, 0.5))
+	heart_text = _hud_text(Vector2(16, 10), 26, Color.WHITE, Vector2(0, 0))
+	progress_text = _hud_text(Vector2(18, 48), 15, Color("#a9b4e8"), Vector2(0, 0), Fonts.title)
+	score_text = _hud_text(Vector2(W - 70, 28), 24, Color("#ffc93c"), Vector2(0.5, 0.5), Fonts.title)
+	combo_text = _hud_text(Vector2(W - 18, 62), 22, Color("#ff9f1c"), Vector2(1, 0), Fonts.title)
 	_hud_button(Vector2(30, H - 30), "🏠", func() -> void:
 		Sfx.play("click")
 		quit_requested.emit())
@@ -1064,8 +1169,8 @@ func _create_hud() -> void:
 	update_hud()
 
 
-func _hud_text(pos: Vector2, size: int, col: Color, org: Vector2) -> Txt:
-	var t := Txt.make("", size, col, 5, Color.BLACK, org)
+func _hud_text(pos: Vector2, size: int, col: Color, org: Vector2, f: Font = null) -> Txt:
+	var t := Txt.make("", size, col, 5, Color(0, 0, 0, 0.8), org, f)
 	t.position = pos
 	t.z_index = Z_HUD
 	add_child(t)
@@ -1090,11 +1195,37 @@ func _hud_button(pos: Vector2, label: String, fn: Callable) -> Txt:
 	return t
 
 
+var _pips: Gfx
+var _shown_score := 0
+var _score_tween: Tween = null
+
+
 func update_hud() -> void:
 	heart_text.text = "❤️".repeat(hearts) + "🖤".repeat(maxi(0, max_hearts - hearts))
-	progress_text.text = "%s%d / %d" % ["📒 복습 " if opts.subject == "review" else "문제 ", q_index, total_questions]
-	score_text.text = "점수 %d" % score
+	progress_text.text = "%s%d / %d" % ["복습 " if opts.subject == "review" else "문제 ", q_index, total_questions]
 	combo_text.text = "🔥 %d 콤보" % combo if combo >= 2 else ""
+	# 진행 구슬: 지나간 문제는 금색, 지금 문제는 크게
+	if _pips:
+		_pips.clear()
+		var n := mini(total_questions, 12)
+		for i in n:
+			var cx := 22.0 + i * 13
+			var done := i < q_index - 1
+			var cur := i == q_index - 1
+			_pips.fill_style(0xffc93c if done else (0xffffff if cur else 0x3a4380), 1)
+			_pips.fill_circle(cx, 78, 5.0 if cur else 4.0)
+	# 점수는 올라가는 숫자로 (상용 게임처럼 촤라락)
+	if score != _shown_score:
+		if _score_tween:
+			_score_tween.kill()
+		var from := _shown_score
+		_shown_score = score
+		_score_tween = create_tween()
+		_score_tween.tween_method(func(v: float) -> void: score_text.text = str(int(v)), float(from), float(score), 0.4)
+		score_text.scale = Vector2(1.25, 1.25)
+		tween_to(score_text, {"scale": Vector2.ONE}, 250, "back_out")
+	elif score_text.text == "":
+		score_text.text = str(score)
 
 
 func set_prompt_text(prompt: String, hint: String = "") -> void:
@@ -1104,20 +1235,43 @@ func set_prompt_text(prompt: String, hint: String = "") -> void:
 	hint_text.fit(HINT_FONT, W - TEXT_SIDE_MARGIN * 2, HINT_FONT_MIN)
 
 
+## 시작 안내: 띠가 가로질러 펼쳐지고 글자가 "쾅" 하고 내려앉는다 (상용 게임의 스테이지 시작 연출)
 func show_intro(msg: String) -> void:
-	var t := Txt.make(msg, 40, Color.WHITE, 7)
+	var band := Gfx.new()
+	band.z_index = Z_POPUP
+	band.position = Vector2(W / 2, 300)
+	band.fill_gradient_rect(-W, -62, W * 2, 124, 0x2a0f5c, 0x0b1033, 0.85)
+	band.fill_style(0xffc93c, 1)
+	band.fill_rect(-W, -64, W * 2, 4)
+	band.fill_rect(-W, 60, W * 2, 4)
+	band.scale = Vector2(1, 0)
+	add_child(band)
+	var bt := band.create_tween()
+	bt.tween_property(band, "scale:y", 1.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	bt.tween_interval((INTRO_MS - 450) / 1000.0)
+	bt.tween_property(band, "scale:y", 0.0, 0.2)
+	bt.tween_callback(band.queue_free)
+	var t := Txt.make(msg, 40, Color.WHITE, 8, Color("#2a0f5c"), Vector2(0.5, 0.5), Fonts.title)
 	t.position = Vector2(W / 2, 300)
 	t.z_index = Z_POPUP
+	t.scale = Vector2(2.2, 2.2)
+	t.modulate.a = 0
 	add_child(t)
 	var tw := t.create_tween()
-	tw.tween_interval((INTRO_MS - 200) / 1000.0)
-	tw.tween_property(t, "modulate:a", 0.0, 0.5)
-	tw.tween_callback(t.queue_free)
+	tw.set_parallel(true)
+	tw.tween_property(t, "scale", Vector2.ONE, 0.22).set_delay(0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(t, "modulate:a", 1.0, 0.12).set_delay(0.08)
+	tw.chain().tween_callback(func() -> void: shake(0.12, 0.004))
+	tw.chain().tween_interval((INTRO_MS - 550) / 1000.0)
+	tw.chain().tween_property(t, "modulate:a", 0.0, 0.25)
+	tw.chain().tween_callback(t.queue_free)
 
 
-## 떠올랐다 사라지는 안내 문구 (정답!, 앗! 등)
+## 떠올랐다 사라지는 안내 문구 (정답!, 앗! 등) — 톡 튀어나왔다가 떠오른다
 func popup(x: float, y: float, msg: String, color: Color) -> void:
-	var t := Txt.make(msg, 30, color, 6)
+	var t := Txt.make(msg, 30, color, 7, Color(0, 0, 0, 0.85), Vector2(0.5, 0.5), Fonts.title)
+	t.scale = Vector2(0.4, 0.4)
+	t.create_tween().tween_property(t, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	t.position = Vector2(x, y)
 	t.z_index = Z_POPUP
 	add_child(t)

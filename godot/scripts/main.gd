@@ -36,7 +36,8 @@ func _ready() -> void:
 	add_child(ui)
 	_rotate_hint = _make_rotate_hint()
 	_is_phone = Bridge.is_web() and bool(Bridge.call_js("isPhone"))
-	show_lobby()
+	_make_cover()
+	_show_lobby_now()
 
 
 ## 놀이 방법이 준비됐는지 (옮겨지지 않은 놀이는 메뉴에서 숨긴다)
@@ -45,6 +46,10 @@ static func mode_ready(id: String) -> bool:
 
 
 func show_lobby() -> void:
+	_fade(_show_lobby_now)
+
+
+func _show_lobby_now() -> void:
 	_clear_screens()
 	lobby = Lobby.new(progress)
 	lobby.start_requested.connect(start_round)
@@ -72,6 +77,10 @@ func start_round() -> void:
 	Voice.unlock()
 	Bridge.call_js("enterLandscape")
 	progress.save_choice()
+	_fade(_start_round_now)
+
+
+func _start_round_now() -> void:
 	_clear_screens()
 	var script: GDScript = load(MODE_SCRIPTS[progress.mode])
 	var r: Node = script.new()
@@ -85,12 +94,48 @@ func start_round() -> void:
 func _on_round_finished(r: Dictionary) -> void:
 	var earned := int(r.firstTry) + (int(Data.rule("perfectBonusStars")) if r.perfect else 0)
 	var fresh := progress.add_stars(earned)
+	_fade(func() -> void: _show_result_now(r, earned, fresh))
+
+
+func _show_result_now(r: Dictionary, earned: int, fresh: Array) -> void:
 	_clear_screens()
 	var scr: GDScript = load("res://scripts/ui/result_screen.gd")
 	result = scr.new(progress, r, earned, fresh)
 	result.retry.connect(start_round)
 	result.menu.connect(show_lobby)
 	ui.add_child(result)
+
+
+# ---------- 화면 전환 (어둡게 덮었다가 걷힌다) ----------
+
+var _cover: ColorRect
+var _fading := false
+
+
+func _make_cover() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+	_cover = ColorRect.new()
+	_cover.color = Color(0.02, 0.02, 0.08, 0)
+	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(_cover)
+
+
+## 화면을 어둡게 덮고 fn 으로 바꾼 뒤 다시 걷는다 (전환 중 누름은 막는다)
+func _fade(fn: Callable) -> void:
+	if _fading:
+		return
+	_fading = true
+	_cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	var tw := create_tween()
+	tw.tween_property(_cover, "color:a", 1.0, 0.16)
+	tw.tween_callback(fn)
+	tw.tween_property(_cover, "color:a", 0.0, 0.24)
+	tw.tween_callback(func() -> void:
+		_fading = false
+		_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE)
 
 
 # ---------- 폰 세로 안내 ----------
