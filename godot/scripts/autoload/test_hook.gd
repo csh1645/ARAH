@@ -82,7 +82,7 @@ func _state(m: Node) -> Dictionary:
 	if is_instance_valid(r):
 		s.round = {"hearts": r.hearts, "score": r.score, "combo": r.combo, "qIndex": r.q_index, "total": r.total_questions,
 			"firstTry": r.first_try, "ended": r.ended, "prompt": str(r.q.get("prompt", "")), "answer": str(r.q.get("answer", "")),
-			"waveActive": r.wave_active, "extra": r.test_state() if r.has_method("test_state") else {}}
+			"waveActive": r.wave_active, "clip": r._clip, "frame": r._anim_frame, "anim": r._anim_sheet != null, "extra": r.test_state() if r.has_method("test_state") else {}}
 	if is_instance_valid(m.result):
 		s.result = {"firstTry": int(m.result.r.firstTry), "total": int(m.result.r.total), "earned": m.result.earned,
 			"fresh": m.result.fresh.map(func(h): return h.id), "join": m.find_child("JoinOverlay", true, false) != null}

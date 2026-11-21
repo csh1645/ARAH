@@ -548,3 +548,10 @@ func auto_wrong() -> bool:
 
 
 var _skip_q := -1
+
+
+## 관절 동작: 공중에서 떨어지는 중이면 '떨어지기' 동작 (다리를 펴 착지 준비)
+func hero_clip(state: String) -> String:
+	if state == "jump" and not on_ground and vy > 120:
+		return "fall"
+	return state

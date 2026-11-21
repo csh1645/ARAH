@@ -96,7 +96,7 @@ func _build(scene: PackedScene) -> void:
 	cam.size = 2.4
 	cam.position = Vector3(0, 1.0, 6)
 	viewport.add_child(cam)
-	cam.look_at(Vector3(0, 1.0, 0))
+	# (0, 1, 6) 에서 -Z 방향을 보는 기본 방향 그대로 = 모델 정면 (트리에 붙기 전이라 look_at 은 쓰지 않는다)
 	model = scene.instantiate()
 	model.rotation_degrees.y = 65 # 오른쪽을 보되 얼굴이 살짝 보이게 (3/4 시점)
 	viewport.add_child(model)

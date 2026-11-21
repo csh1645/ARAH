@@ -249,13 +249,68 @@
     return [s[0] + Math.cos(a) * len, s[1] + Math.sin(a) * len];
   }
 
-  /** 자세 정의 → 그리기용 값 (손 위치, 장비 이동량 등) */
+  // ---------- 관절 동작 (Godot 판, 2026-11-21 — 사용자 "모션이 단순하다" → 연속 동작) ----------
+  // 자세 8장 대신, 관절 값(팔 · 다리 각도, 몸 기울기, 다리 접힘)을 시간에 따라 연속으로 바꾼 동작 묶음.
+  // tools/sprites/build.mjs 가 프레임마다 2배 해상도로 구워 <id>.anim.webp 를 만든다 (Phaser 판은 쓰지 않음).
+  // 프레임 순서 = HERO_ANIMS 순서대로 이어 붙임 → 모든 히어로가 같은 배치 (프레임 위치 · 손 위치는 한 번만 계산).
+  // as: 그림 코드가 자세 이름으로 바꾸는 부분(공격 때 빛 · 주먹 크기, 점프 때 몸 들기)에 쓸 이름.
+  const wave = (i, n) => Math.sin((i / n) * TAU);
+  const cwave = (i, n) => Math.cos((i / n) * TAU);
+  const HERO_ANIMS = [
+    { name: 'idle', fps: 8, loop: true, frames: Array.from({ length: 8 }, (_, i) => ({ // 숨쉬기: 팔이 살짝 오르내림
+      r: -0.8 + 0.1 * wave(i, 8), l: 2.18 - 0.07 * wave(i, 8), legs: [0, 0], lean: 0.02 * wave(i, 8), tuck: 1 - 0.02 * (1 + cwave(i, 8)),
+    })) },
+    { name: 'run', fps: 14, loop: true, frames: Array.from({ length: 8 }, (_, i) => ({ // 달리기: 팔다리 엇갈림 + 무릎 굽힘
+      r: 0.3 - 0.6 * cwave(i, 8), l: 2.15 + 0.62 * cwave(i, 8),
+      legs: [-0.58 * cwave(i, 8), 0.58 * cwave(i, 8)], tuck: 1 - 0.13 * Math.abs(wave(i, 8)), lean: 0.1 + 0.03 * Math.abs(wave(i, 8)),
+    })) },
+    { name: 'attack', fps: 22, loop: false, frames: [ // 예비 동작(뒤로 젖힘) → 쭉 뻗어 치기 → 여운
+      { r: -2.3, l: 2.45, legs: [-0.1, 0.25], lean: -0.12, tuck: 0.94 },
+      { r: -1.7, l: 2.6, legs: [-0.15, 0.3], lean: -0.05, tuck: 0.96 },
+      { r: -0.15, l: 2.95, len: 17.5, legs: [-0.35, 0.4], lean: 0.22, as: 'attack' },
+      { r: -0.18, l: 2.9, len: 17, legs: [-0.3, 0.38], lean: 0.18, as: 'attack' },
+      { r: -0.35, l: 2.6, len: 16, legs: [-0.2, 0.3], lean: 0.1, as: 'attack' },
+      { r: -0.65, l: 2.3, legs: [-0.05, 0.1], lean: 0.04 },
+    ] },
+    { name: 'jump', fps: 14, loop: false, frames: [ // 웅크림 → 박차고 오름 → 공중에서 몸 말기 (마지막 장 유지)
+      { r: 0.6, l: 2.0, legs: [-0.2, 0.2], tuck: 0.72, lean: 0.12 },
+      { r: -1.45, l: -1.75, legs: [-0.3, 0.32], tuck: 1, as: 'jump' },
+      { r: -1.25, l: -1.9, legs: [-0.75, 0.45], tuck: 0.72, as: 'jump' },
+    ] },
+    { name: 'fall', fps: 10, loop: false, frames: [ // 내려오며 다리를 펴 착지 준비
+      { r: -0.95, l: -2.3, legs: [-0.35, 0.2], tuck: 0.9, as: 'jump' },
+      { r: -0.7, l: -2.5, legs: [-0.15, 0.12], tuck: 1 },
+    ] },
+    { name: 'hurt', fps: 14, loop: false, frames: [ // 움찔 → 몸을 젖힘 → 버팀
+      { r: -1.95, l: -1.2, legs: [0.25, -0.1], lean: -0.28, face: 'hurt', tuck: 0.9 },
+      { r: -2.05, l: -1.1, legs: [0.3, -0.15], lean: -0.2, face: 'hurt' },
+      { r: -1.85, l: -1.3, legs: [0.2, -0.05], lean: -0.14, face: 'hurt' },
+    ] },
+    { name: 'win', fps: 9, loop: true, frames: Array.from({ length: 6 }, (_, i) => ({ // 만세하며 두 팔을 번갈아 흔들기
+      r: -1.05 + 0.4 * wave(i, 6), l: -2.1 + 0.4 * wave(i, 6), legs: [-0.28 - 0.08 * wave(i, 6), 0.28 - 0.08 * wave(i, 6)],
+      lean: 0.06 * wave(i, 6), tuck: 1 - 0.06 * Math.abs(wave(i, 6)), face: 'happy', as: 'win',
+    })) },
+  ];
+  /** 동작 묶음 목록: 이름 · 초당 프레임 · 반복 · 프레임 수 · 시작 번호 */
+  A.HERO_ANIMS = (() => {
+    let start = 0;
+    return HERO_ANIMS.map((c) => {
+      const out = { name: c.name, fps: c.fps, loop: c.loop, count: c.frames.length, start };
+      start += c.frames.length;
+      return out;
+    });
+  })();
+  /** 굽는 순서대로 모든 동작 프레임의 PoseDef */
+  A.HERO_ANIM_FRAMES = HERO_ANIMS.flatMap((c) => c.frames);
+
+  /** 자세 정의(이름 또는 PoseDef) → 그리기용 값 (손 위치, 장비 이동량 등) */
   function resolvePose(name) {
-    const d = POSES[name] || POSES.idle;
+    const obj = typeof name === 'object' && name;
+    const d = obj || POSES[name] || POSES.idle;
     const hand = reach(SHOULDER.r, d.r, d.len || ARM_LEN);
     return {
       ...d,
-      name,
+      name: obj ? (d.as || 'anim') : name,
       hand,
       off: reach(SHOULDER.l, d.l, d.len || ARM_LEN),
       shift: [hand[0] - HAND0[0], hand[1] - HAND0[1]], // 장비를 손 따라 옮길 양

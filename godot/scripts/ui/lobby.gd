@@ -357,9 +357,9 @@ func _render_modes() -> void:
 			b.add_child(badge)
 		_modes_box.add_child(b)
 	# 시험: 히어로 러너의 히어로를 3D 모델로 (상용 게임 방향 A 비교용, 2026-11-21)
-	var on := bool(Store.get_value("hero3d", true))
+	var on := bool(Store.get_value("hero3d", false))
 	var t := Kit.button("🧪 3D 러너 시험", 16, "tile", func() -> void:
-		Store.set_value("hero3d", not bool(Store.get_value("hero3d", true)))
+		Store.set_value("hero3d", not bool(Store.get_value("hero3d", false)))
 		render(), "켜짐 · 러너에서 3D 캐릭터" if on else "꺼짐 · 2D 그림")
 	t.name = "Hero3DToggle"
 	t.custom_minimum_size = Vector2(150, 70)

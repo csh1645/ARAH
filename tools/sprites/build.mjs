@@ -21,6 +21,8 @@ const SRC = path.join(ROOT, 'web', 'src');
 const OUT_DIR = path.join(ROOT, 'web', 'public', 'assets', 'sprites', 'heroes');
 const MANIFEST = path.join(SRC, 'data', 'sprite-manifest.json');
 const FRAME = { w: 96, h: 108 }; // 게임의 히어로 크기 (round-scene.js GAME.HERO_SIZE)
+const ANIM_SCALE = 2; // Godot 판 관절 동작 아틀라스 해상도 배율 (크게 보여도 선명하게)
+const ANIM_COLS = 8;
 
 /** 게임 코드(IIFE · 전역 ARAH)를 Node 에서 그대로 실행한다. document.createElement('canvas') 만 흉내 내면 된다 */
 function loadGame() {
@@ -75,7 +77,28 @@ for (const hero of A.HEROES) {
     meta: { image: `${hero.id}.png`, size: { w: sheet.width, h: sheet.height }, scale: '1', source: 'generated' },
   }, null, 1)}\n`);
   manifest.heroes[hero.id] = `assets/sprites/heroes/${hero.id}`;
+  bakeAnim(hero);
   made++;
+}
+
+/**
+ * Godot 판 관절 동작 아틀라스: A.HERO_ANIM_FRAMES 를 2배 해상도로 ANIM_COLS 칸씩 이어 굽는다 → <id>.anim.webp
+ * (배치는 모든 히어로가 같다: 프레임 k → (k % ANIM_COLS, k / ANIM_COLS) 칸. 동작 표 · 손 위치는 tools/godot/export-data.mjs 가 내보낸다)
+ */
+function bakeAnim(hero) {
+  const frames = A.HERO_ANIM_FRAMES;
+  if (!frames) return;
+  const fw = FRAME.w * ANIM_SCALE;
+  const fh = FRAME.h * ANIM_SCALE;
+  const rows = Math.ceil(frames.length / ANIM_COLS);
+  const sheet = createCanvas(fw * ANIM_COLS, fh * rows);
+  const ctx = sheet.getContext('2d');
+  frames.forEach((pose, k) => {
+    const cell = createCanvas(fw, fh);
+    A.drawHero(cell.getContext('2d'), hero, fw, fh, { pose });
+    ctx.drawImage(cell, (k % ANIM_COLS) * fw, Math.floor(k / ANIM_COLS) * fh);
+  });
+  fs.writeFileSync(path.join(OUT_DIR, `${hero.id}.anim.webp`), sheet.toBuffer('image/webp', 80));
 }
 fs.writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
 console.log(`스프라이트: 새로 구움 ${made} · 디자이너 그림 유지 ${kept} → ${path.relative(process.cwd(), OUT_DIR)}`);

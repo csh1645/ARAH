@@ -840,13 +840,123 @@ func create_hero(x: float, y: float, s: float = 1.0) -> Sprite2D:
 		_skin.scale = Vector2.ONE * HERO_SIZE.x / Hero3D.VIEW.x * Hero3D.SHOW_SCALE
 		_skin.position = Vector2(0, -6)
 		player.add_child(_skin)
+	else:
+		Assets.anim_loaded.connect(_on_anim_loaded)
+		_setup_anim_skin()
 	_tick_hero_anim()
 	return player
 
 
-## 3D 히어로 시험: 히어로 러너에서만, 로비의 "3D 캐릭터 (시험)" 이 켜져 있을 때 (기본 켜짐)
+# ---------- 2D 관절 애니메이션 (2026-11-21) ----------
+# 관절 동작 아틀라스(<id>.anim.webp, 2배 해상도)가 있으면: 2D 자리는 그대로 두고 그 위에 동작 그림을 붙인다.
+# 동작 묶음(idle · run · attack · jump · fall · hurt · win)을 초당 프레임대로 재생하고,
+# 셰이더(hero_deform)로 머리 끄덕임 · 몸 눌림을 덧입힌다. 아틀라스를 받기 전에는 예전 자세 그림을 쓴다.
+
+const DEFORM := preload("res://shaders/hero_deform.gdshader")
+## 작품별 목 높이 (프레임 비율 — 머리가 큰 마스코트일수록 아래)
+const NECK := {"comic": 0.41, "onepiece": 0.47, "original": 0.5, "sanrio": 0.58, "chiikawa": 0.6}
+
+var _anim_sheet: Texture2D = null
+var _clip := ""
+var _clip_start := 0.0
+var _anim_frame := 0
+var _clips: Dictionary = {}
+
+
+func _on_anim_loaded(id: String) -> void:
+	if id == hero.id and _anim_sheet == null and player != null and hero3d == null:
+		_setup_anim_skin()
+
+
+func _setup_anim_skin() -> void:
+	var sheet := Assets.anim(hero.id)
+	if sheet == null:
+		return
+	_anim_sheet = sheet
+	for c in Data.game.get("anims", {}).get("clips", []):
+		_clips[c.name] = c
+	var blank := Image.create(int(HERO_SIZE.x), int(HERO_SIZE.y), false, Image.FORMAT_RGBA8)
+	player.texture = ImageTexture.create_from_image(blank)
+	_skin = Sprite2D.new()
+	_skin.texture = sheet
+	_skin.region_enabled = true
+	_skin.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_skin.scale = Vector2.ONE / float(Data.game.get("anims", {}).get("scale", 2))
+	var mat := ShaderMaterial.new()
+	mat.shader = DEFORM
+	mat.set_shader_parameter("neck", NECK.get(franchise, 0.45))
+	_skin.material = mat
+	player.add_child(_skin)
+	_clip = ""
+	hero_anim.current = ""
+	_tick_hero_anim()
+
+
+## 지금 상태 → 동작 묶음 이름. 놀이가 바꿀 수 있다 (러너: 떨어질 때 fall)
+func hero_clip(state: String) -> String:
+	return state
+
+
+func _tick_anim_skin(state: String) -> void:
+	var clip := hero_clip(state)
+	if not _clips.has(clip):
+		clip = "idle"
+	if clip != _clip:
+		_clip = clip
+		_clip_start = now
+	var c: Dictionary = _clips[clip]
+	var n := int(c.count)
+	var k := int((now - _clip_start) / 1000.0 * float(c.fps))
+	k = k % n if c.loop else mini(k, n - 1)
+	_anim_frame = int(c.start) + k
+	var r := Assets.anim_rect(_anim_frame)
+	_skin.region_rect = r
+	_skin.flip_h = player.flip_h
+	var ts := _anim_sheet.get_size()
+	var mat: ShaderMaterial = _skin.material
+	mat.set_shader_parameter("region", Vector4(r.position.x / ts.x, r.position.y / ts.y, r.size.x / ts.x, r.size.y / ts.y))
+	# 2차 움직임: 머리 끄덕임 · 기울임 · 몸 눌림 (동작마다 다르게, 시간에 따라 부드럽게)
+	var t := now / 1000.0
+	var ang := 0.0
+	var off := Vector2.ZERO
+	var sq := 0.0
+	match clip:
+		"idle":
+			ang = 0.05 * sin(t * 2.2)
+			off.y = 0.006 * sin(t * 4.4)
+			sq = 0.015 * sin(t * 4.4)
+		"run":
+			var ph := (now - _clip_start) / 1000.0 * float(c.fps) / n * TAU
+			ang = 0.07 + 0.05 * sin(ph * 2.0)
+			off.y = -0.012 * absf(sin(ph))
+			sq = 0.04 * cos(ph * 2.0)
+		"attack":
+			ang = [-0.12, -0.08, 0.16, 0.14, 0.08, 0.02][k] if k < 6 else 0.0
+			sq = [0.05, 0.03, -0.06, -0.03, 0.0, 0.0][k] if k < 6 else 0.0
+		"jump":
+			ang = -0.1
+			sq = -0.08 if k >= 1 else 0.1
+		"fall":
+			ang = 0.06
+			sq = -0.04
+		"hurt":
+			ang = -0.22 + 0.06 * sin(t * 40.0)
+			off.x = -0.015
+		"win":
+			ang = 0.14 * sin(t * 7.0)
+			off.y = -0.01 * absf(sin(t * 7.0))
+			sq = 0.04 * sin(t * 14.0)
+	if player.flip_h:
+		ang = -ang
+		off.x = -off.x
+	mat.set_shader_parameter("head_angle", ang)
+	mat.set_shader_parameter("head_offset", off)
+	mat.set_shader_parameter("squash", sq)
+
+
+## 3D 히어로 시험: 히어로 러너에서만, 로비의 "3D 러너 시험" 을 켰을 때 (기본 꺼짐 — 사용자가 2D 관절 애니메이션을 골랐다, 2026-11-21)
 func use_hero_3d() -> bool:
-	return opts.get("mode", "") == "run" and bool(Store.get_value("hero3d", true))
+	return opts.get("mode", "") == "run" and bool(Store.get_value("hero3d", false))
 
 
 var hero3d: Hero3D = null
@@ -871,6 +981,9 @@ func _tick_hero_anim() -> void:
 	if hero3d: # 3D: 자세 이름을 관절 동작으로 (달리기 · 점프 · 공격 · 아야 · 환호)
 		hero3d.play(a.pose if a.pose != "" else a.base)
 		_skin.flip_h = player.flip_h
+		return
+	if _anim_sheet: # 2D 관절 동작
+		_tick_anim_skin(a.pose if a.pose != "" else a.base)
 		return
 	var pose: String = a.pose
 	if pose == "":
@@ -1028,6 +1141,10 @@ func hand() -> Vector2:
 	if p == null:
 		return Vector2(W / 2, H - 120)
 	var r := Data.hand_of(str(hero_anim.current) if hero_anim.current != "" else "idle")
+	if _anim_sheet: # 관절 동작: 지금 프레임의 손 위치
+		var hs: Array = Data.game.get("anims", {}).get("hands", [])
+		if _anim_frame < hs.size():
+			r = Vector2(float(hs[_anim_frame].x), float(hs[_anim_frame].y))
 	var dir := -1.0 if p.flip_h else 1.0
 	var k := absf(p.scale.y) if p.scale.y != 0 else 1.0
 	return Vector2(p.position.x + dir * r.x * HERO_SIZE.x * k, p.position.y + r.y * HERO_SIZE.y * k)

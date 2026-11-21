@@ -64,9 +64,12 @@ const A = sandbox.ARAH;
 // ---------- 히어로 손 위치 (그림 원본 hero-art.js 의 자세 표에서 계산) ----------
 // hero-art.js 는 캔버스 그리기 코드라 실행에 Phaser 가 필요 없다. 실패하면 기본값(오른손 앞)으로 둔다.
 let hands = null;
+let anims = null;
 try {
   run('game/hero-art.js');
   hands = Object.fromEntries(A.HERO_POSES.map((p) => [p, A.heroHand(p)]));
+  // 관절 동작: 동작 묶음 표 + 프레임마다 손 위치 (그림은 npm run sprites 가 <id>.anim.webp 로 굽는다)
+  anims = { clips: A.HERO_ANIMS, hands: A.HERO_ANIM_FRAMES.map((p) => A.heroHand(p)), cols: 8, scale: 2 };
 } catch (e) {
   console.warn(`hero-art.js 를 실행하지 못해 손 위치 기본값을 씁니다: ${e.message}`);
 }
@@ -159,6 +162,7 @@ const game = {
     frames: Object.fromEntries(Object.entries(atlas.frames).map(([k, v]) => [k, [v.frame.x, v.frame.y, v.frame.w, v.frame.h]])),
   },
   hands,
+  anims,
   voices: { default: A.VOICE_DEFAULT, packs: A.VOICE_PACKS },
   pools: poolStats,
 };
