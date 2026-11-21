@@ -1,6 +1,7 @@
 /**
  * @file Godot 판 웹 빌드: 데이터 내보내기 → Godot 가져오기(import) → 웹 내보내기(스레드 없음) → 브라우저 다리 복사.
- *       결과: web/public/play/ (Vite 가 그대로 배포. 그림 · 발음 파일은 같은 사이트의 /assets 를 쓴다)
+ *       결과: godot/export/web/ (커밋한다 — 운영 빌드는 tools/godot/publish.mjs 가 이 파일을 사이트 첫 화면으로 복사)
+ *       로컬 확인용으로 web/public/play/ 에도 복사한다 (npm run dev → /play/index.html, git 제외)
  * 실행: npm run godot:build   (Godot 실행 파일: 환경 변수 GODOT, 없으면 winget 설치 위치)
  * @see doc/planning/godot-migration-plan.md (5. 빌드 · 배포)
  */
@@ -12,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PROJECT = path.join(ROOT, 'godot');
-const OUT = path.join(ROOT, 'web/public/play');
+const OUT = path.join(PROJECT, 'export/web');
+const DEV_OUT = path.join(ROOT, 'web/public/play');
 const VERSION = '4.7.2-stable'; // ADR-0011 엔진 버전 고정
 
 function findGodot() {
@@ -45,5 +47,7 @@ if (bad.length) {
 console.log(lines.filter((l) => l.includes('[검사]')).join(' · '));
 run(['--headless', '--path', '.', '--export-release', 'Web', path.join(OUT, 'index.html')]);
 for (const f of ['arah-bridge.js', 'boot.js']) fs.copyFileSync(path.join(PROJECT, 'web', f), path.join(OUT, f));
+fs.mkdirSync(DEV_OUT, { recursive: true });
+for (const f of fs.readdirSync(OUT)) fs.copyFileSync(path.join(OUT, f), path.join(DEV_OUT, f));
 const size = fs.readdirSync(OUT).reduce((s, f) => s + fs.statSync(path.join(OUT, f)).size, 0);
 console.log(`웹 빌드 완료 → ${path.relative(ROOT, OUT)} (${(size / 1048576).toFixed(1)} MB)`);

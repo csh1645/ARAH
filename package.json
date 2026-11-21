@@ -2,11 +2,11 @@
   "name": "arah-hero-mission",
   "private": true,
   "version": "0.2.0",
-  "description": "히어로 대작전 — 초1~중3 수학 · 영어 학습 액션 웹게임 (Vite + Phaser + Three.js)",
+  "description": "히어로 대작전 — 초1~중3 수학 · 영어 학습 액션 웹게임 (Godot 4.7 웹, 예전 Phaser 판은 classic.html)",
   "type": "module",
   "scripts": {
     "dev": "npm run content && vite",
-    "build": "npm run content && vite build",
+    "build": "npm run content && vite build && node tools/godot/publish.mjs",
     "preview": "vite preview",
     "content": "node scripts/content-build.mjs",
     "content:import": "node scripts/content-import-legacy.mjs",

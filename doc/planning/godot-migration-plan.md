@@ -14,9 +14,9 @@
 | 4 | 한 판 기반 (`round_base.gd`) + 공격 8종 · 필살기 45종 · 건너가기 8종 | ✅ |
 | 5 | 놀이 7종 (러너 · 드론 잡기 · 빌딩 스윙 · 문 통과 · 철자 잇기 · 짝꿍 찾기 · 보스 배틀) | ✅ 자동 플레이 완주 |
 | 6 | 실제 아이 · 실제 기기(폰 · 태블릿) 플레이, 사용자 확인 | ⏳ |
-| 7 | 운영 전환 (`/` 를 Godot 판으로) — 사용자 확인 후 | ⏳ |
+| 7 | 운영 전환: `/` = Godot 판, 예전 Phaser 판은 `/classic.html` (사용자 "바로 진행") | ✅ 2026-11-21 |
 
-운영(https://arah-web-olive.vercel.app/)은 7단계 전까지 Phaser 판 그대로다.
+운영(https://arah-web-olive.vercel.app/)의 첫 화면은 Godot 판이다. 예전 판: https://arah-web-olive.vercel.app/classic.html
 
 ## 2. 폴더 구조
 
@@ -66,10 +66,10 @@ npm run dev           # http://localhost:5173/play/index.html 에서 확인
 
 * 스크립트 검사: 웹 내보내기는 GDScript 오류가 있어도 성공하므로, 빌드 중에 모든 놀이 스크립트를 불러 오류가 있으면 멈춘다 (`ARAH_CHECK=1`)
 * 결과 크기: 엔진 wasm 약 38MB(전송 시 압축으로 약 9MB) + 게임 묶음 약 7MB. 엔진 파일은 버전이 같으면 브라우저 캐시를 쓴다
-* **운영 배포 방식 (전환 때 정한다)** — Vercel 빌드 서버에는 Godot 가 없다. 후보:
-  1. GitHub Actions 에서 Godot(리눅스 · 헤드리스) + 웹 템플릿으로 빌드 → 결과를 Vercel 에 올림 (추천: 저장소에 큰 파일이 쌓이지 않음)
-  2. `web/public/play/` 결과를 커밋 (간단하지만 wasm 38MB 가 저장소에 쌓임)
-* 전환 전 확인 주소: 로컬 `/play/index.html`. 원하면 `/play/` 를 운영에 같이 올려 가족이 미리 해 볼 수 있다 (Phaser 판은 `/` 그대로)
+* **운영 배포 (2026-11-21 결정):** Godot 웹 내보내기 결과 `godot/export/web/` 를 **커밋**한다. Vercel 설정은 그대로 — `npm run build` 의 마지막 단계 `tools/godot/publish.mjs` 가
+  Phaser 판 첫 화면을 `classic.html` 로 바꾸고 Godot 판 파일을 `web/dist/` 첫 화면으로 복사한다 (Vercel 빌드 서버에 Godot 가 없어도 된다)
+* Godot 판을 고치면: `npm run godot:build` → `godot/export/web/` 변경을 함께 커밋 → main push
+* 엔진 wasm(38MB)은 엔진 버전을 바꿀 때만 바뀐다. 게임 묶음(index.pck, 약 7MB)은 고칠 때마다 커밋된다
 
 ## 6. 테스트 방법 (에이전트)
 
